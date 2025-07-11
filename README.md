@@ -155,3 +155,19 @@ Anchor.toml 中的程序ID
 
 * 最新部署的合约 VHkKqWysSfP5K8vAnHST1VHeVyueZEv4o2PQNUG5jWzoAg79Cxsfzfr2wY897jPS1wSR6gTGP5NYJkSFSQCqLer
 
+* `solana balance -k target/deploy/learn_solana_program-keypair.json` 查看程序的余额，如果部署过那么就可以看到余额，注意这个私钥要保存好，有了这个私钥任何人都可以修改程序。除非：
+```
+就是通过将程序标记为"不可升级"（Immutable）。
+有两种方式可以实现：
+部署时直接设置为不可升级
+   solana program deploy --final target/deploy/learn_solana_program.so
+或者使用 Anchor：
+   anchor deploy --program-name learn_solana_program --final
+--final 标志会让程序在部署时就被标记为不可升级
+部署后将程序设置为不可升级
+   solana program set-upgrade-authority <PROGRAM_ID> --final
+一旦程序被标记为不可升级：
+即使有程序的密钥对也无法修改程序
+这个操作是不可逆的
+程序将永远保持当前的逻辑
+```
