@@ -4,7 +4,7 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { FC, useState } from 'react';
 import * as anchor from '@project-serum/anchor';
 import { Program, AnchorProvider } from '@project-serum/anchor';
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
 import { IDL } from '../idl/learn_solana_program';
 
 // 这里需要替换为你的程序 ID
@@ -17,7 +17,8 @@ const generateRandomId = () => {
 
 export const TradeForm: FC = () => {
   const { connection } = useConnection();
-  const { publicKey, sendTransaction } = useWallet();
+  const wallet = useWallet();
+  const { publicKey } = wallet;
   
   const [formData, setFormData] = useState({
     id: generateRandomId(),
@@ -30,16 +31,23 @@ export const TradeForm: FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!publicKey) {
+    if (!publicKey || !wallet.signTransaction || !wallet.signAllTransactions) {
       alert('请先连接钱包');
       return;
     }
 
     try {
-      // 创建交易指令
+      // 创建 Provider
       const provider = new AnchorProvider(
         connection,
-        window.solana,
+        {
+          publicKey,
+          signTransaction: wallet.signTransaction,
+          signAllTransactions: async (txs: Transaction[] | VersionedTransaction[]) => {
+            if (!wallet.signAllTransactions) throw new Error('Wallet does not support signAllTransactions');
+            return wallet.signAllTransactions(txs as any[]);
+          },
+        },
         { commitment: 'processed' }
       );
       
