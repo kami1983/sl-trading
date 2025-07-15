@@ -17,3 +17,16 @@ find_program_address(
 ### 解释一下创建SPL token
 * spl-token create-token 是在官方 SPL Token Program（固定 program ID）控制下创建了一个 Mint 账户（不是用来存余额的，但的确是存储数据的）。这个账号，是一个状态账户（数据结构）存的是该 Token 的元信息（如总供应量、decimals、小数精度、mint authority 等）这个 Mint 账户的地址，就是我们平时说的“token 地址”
 * 接着，spl-token create-account <token_address> 是为某个钱包地址创建一个 Associated Token Account（ATA），这个账户是由 PDA 派生出来的专属地址，专门用于存储该钱包对该 Token 的余额。
+
+
+### @https://explorer.solana.com/  和 @https://solscan.io/  的区别和关系
+```
+开发调试时：优先使用 Solana Explorer，因为它是官方工具，与开发环境集成更好
+数据分析时：使用 Solscan，因为它提供更多数据维度和分析工具
+查看 NFT 和 Token：Solscan 的展示更友好
+简单交易查询：两者都可以，看个人习惯
+程序部署后查看：使用 Solana Explorer
+Token 发行后追踪：使用 Solscan
+交易调试：使用 Solana Explorer
+生态数据分析：使用 Solscan
+```
