@@ -1,24 +1,13 @@
-export const IDL = {
+export type LearnSolanaProgram = {
   "version": "0.1.0",
   "name": "learn_solana_program",
   "instructions": [
-    {
-      "name": "initialize",
-      "accounts": [
-        {
-          "name": "signer",
-          "isMut": true,
-          "isSigner": true
-        }
-      ],
-      "args": []
-    },
     {
       "name": "logTrade",
       "accounts": [
         {
           "name": "signer",
-          "isMut": true,
+          "isMut": false,
           "isSigner": true
         }
       ],
@@ -56,7 +45,6 @@ export const IDL = {
       ]
     }
   ],
-  "accounts": [],
   "types": [
     {
       "name": "TradeType",
@@ -64,61 +52,78 @@ export const IDL = {
         "kind": "enum",
         "variants": [
           {
-            "name": "BUY"
+            "name": "Buy"
           },
           {
-            "name": "SELL"
+            "name": "Sell"
           }
         ]
       }
     }
-  ],
-  "events": [
+  ]
+};
+
+export const IDL: LearnSolanaProgram = {
+  "version": "0.1.0",
+  "name": "learn_solana_program",
+  "instructions": [
     {
-      "name": "TradeEvent",
-      "fields": [
+      "name": "logTrade",
+      "accounts": [
+        {
+          "name": "signer",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
         {
           "name": "id",
-          "type": "string",
-          "index": false
+          "type": "string"
         },
         {
           "name": "userId",
-          "type": "string",
-          "index": false
+          "type": "string"
         },
         {
           "name": "fundId",
-          "type": "string",
-          "index": false
+          "type": "string"
         },
         {
           "name": "tradeType",
           "type": {
             "defined": "TradeType"
-          },
-          "index": false
+          }
         },
         {
           "name": "amount",
-          "type": "u64",
-          "index": false
+          "type": "u64"
         },
         {
           "name": "price",
-          "type": "u64",
-          "index": false
+          "type": "u64"
         },
         {
           "name": "timestamp",
-          "type": "i64",
-          "index": false
+          "type": "i64"
         }
       ]
     }
   ],
-  "errors": [],
-  "metadata": {
-    "address": "19g7kgLjp6TKgtHCgs5rZseG4eeKNqhXf3AhAmRJrtW"
-  }
+  "types": [
+    {
+      "name": "TradeType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Buy"
+          },
+          {
+            "name": "Sell"
+          }
+        ]
+      }
+    }
+  ]
 }; 

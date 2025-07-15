@@ -3,23 +3,29 @@
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { FC, useState } from 'react';
 import * as anchor from '@project-serum/anchor';
-import { Program, AnchorProvider, Idl } from '@project-serum/anchor';
+import { Program, AnchorProvider } from '@project-serum/anchor';
 import { PublicKey } from '@solana/web3.js';
+import { IDL } from '../idl/learn_solana_program';
 
 // 这里需要替换为你的程序 ID
 const PROGRAM_ID = new PublicKey('19g7kgLjp6TKgtHCgs5rZseG4eeKNqhXf3AhAmRJrtW');
+
+// 生成随机ID
+const generateRandomId = () => {
+  return Math.random().toString(36).substring(2, 15);
+};
 
 export const TradeForm: FC = () => {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
   
   const [formData, setFormData] = useState({
-    id: '',
-    userId: '',
-    fundId: '',
+    id: generateRandomId(),
+    userId: 'USER_' + generateRandomId(),
+    fundId: 'FUND_001',
     tradeType: 'BUY',
-    amount: '',
-    price: '',
+    amount: '100',
+    price: '10',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,13 +43,7 @@ export const TradeForm: FC = () => {
         { commitment: 'processed' }
       );
       
-      // 获取 IDL
-      const idl = await Program.fetchIdl(PROGRAM_ID, provider);
-      if (!idl) {
-        throw new Error('无法获取 IDL');
-      }
-
-      const program = new Program(idl, PROGRAM_ID, provider);
+      const program = new Program(IDL, PROGRAM_ID, provider);
       
       const tx = await program.methods.logTrade(
         formData.id,
@@ -61,14 +61,14 @@ export const TradeForm: FC = () => {
 
       alert(`交易成功！交易签名: ${tx}`);
       
-      // 清空表单
+      // 重置表单，生成新的随机ID
       setFormData({
-        id: '',
-        userId: '',
-        fundId: '',
+        id: generateRandomId(),
+        userId: 'USER_' + generateRandomId(),
+        fundId: 'FUND_001',
         tradeType: 'BUY',
-        amount: '',
-        price: '',
+        amount: '100',
+        price: '10',
       });
     } catch (error: any) {
       console.error('交易失败:', error);
@@ -83,9 +83,30 @@ export const TradeForm: FC = () => {
     });
   };
 
+  // 重置表单到默认值
+  const handleReset = () => {
+    setFormData({
+      id: generateRandomId(),
+      userId: 'USER_' + generateRandomId(),
+      fundId: 'FUND_001',
+      tradeType: 'BUY',
+      amount: '100',
+      price: '10',
+    });
+  };
+
   return (
     <div className="bg-white/10 rounded-lg p-6 backdrop-blur-sm">
-      <h2 className="text-xl font-semibold text-white mb-6">提交交易</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold text-white">提交交易</h2>
+        <button
+          type="button"
+          onClick={handleReset}
+          className="px-3 py-1 text-sm text-gray-300 hover:text-white border border-gray-600 rounded-md hover:border-gray-500"
+        >
+          重置表单
+        </button>
+      </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-200">交易ID</label>
