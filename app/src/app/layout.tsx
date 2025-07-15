@@ -1,13 +1,14 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import "./globals.css";
-import { Providers } from "./providers";
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import { ClientOnly } from '@/components/ClientOnly';
+import { WalletProvider } from '@/components/WalletProvider';
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: "Solana 交易日志测试",
-  description: "测试 Solana 程序的交易日志功能",
+  title: 'Solana Program Demo',
+  description: 'Learn Solana Program Demo',
 };
 
 export default function RootLayout({
@@ -16,9 +17,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="zh">
+    <html lang="en">
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <ClientOnly>
+          <WalletProvider>{children}</WalletProvider>
+        </ClientOnly>
       </body>
     </html>
   );
