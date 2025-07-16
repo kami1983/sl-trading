@@ -11,7 +11,7 @@ export default function TradePage() {
         subtitle="提交交易到 Solana 区块链"
       >
         <p className="mb-6">
-          使用下面的表单提交交易。请确保已连接钱包并填写所有必要信息。
+          使用下面的表单提交交易。请填写所有必要信息。
         </p>
       </AppHero>
       

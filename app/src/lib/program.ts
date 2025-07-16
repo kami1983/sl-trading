@@ -79,11 +79,16 @@ function createLogTradeInstruction(params: LogTradeParams) {
 
 // Hook 用于调用 log_trade
 export function useLogTrade() {
+  const { account } = useWalletUi()
   const txSigner = useWalletUiSigner()
   const signAndSend = useWalletTransactionSignAndSend()
   
   return useMutation({
     mutationFn: async (params: LogTradeParams) => {
+      if (!account || !txSigner) {
+        throw new Error('请先连接钱包')
+      }
+      
       const instruction = createLogTradeInstruction(params)
       return await signAndSend(instruction, txSigner)
     },

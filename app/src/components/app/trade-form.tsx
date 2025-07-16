@@ -5,27 +5,22 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useWalletUi } from '@wallet-ui/react'
-import { AppAlert } from '@/components/app-alert'
-import { useLogTrade, TradeType } from '@/lib/program'
 
 interface TradeFormData {
   id: string
   userId: string
   fundId: string
-  tradeType: TradeType
+  tradeType: 'BUY' | 'SELL'
   amount: string
   price: string
 }
 
 export function TradeForm() {
-  const { account } = useWalletUi()
-  const logTradeMutation = useLogTrade()
   const [formData, setFormData] = useState<TradeFormData>({
     id: '',
     userId: '',
     fundId: '',
-    tradeType: TradeType.BUY,
+    tradeType: 'BUY',
     amount: '',
     price: '',
   })
@@ -33,40 +28,10 @@ export function TradeForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!account) {
-      alert('请先连接钱包')
-      return
-    }
-
-    if (!formData.id || !formData.userId || !formData.fundId || !formData.amount || !formData.price) {
-      alert('请填写所有字段')
-      return
-    }
-
-    try {
-      await logTradeMutation.mutateAsync({
-        id: formData.id,
-        userId: formData.userId,
-        fundId: formData.fundId,
-        tradeType: formData.tradeType,
-        amount: parseInt(formData.amount),
-        price: parseInt(formData.price),
-        timestamp: Date.now(),
-      })
-      
-      // 重置表单
-      setFormData({
-        id: '',
-        userId: '',
-        fundId: '',
-        tradeType: TradeType.BUY,
-        amount: '',
-        price: '',
-      })
-
-    } catch (error) {
-      console.error('交易失败:', error)
-    }
+    console.log('提交交易数据:', formData)
+    
+    // 这里你可以添加自己的交互逻辑
+    alert('表单提交成功！数据: ' + JSON.stringify(formData, null, 2))
   }
 
   const handleInputChange = (field: keyof TradeFormData, value: string) => {
@@ -74,14 +39,6 @@ export function TradeForm() {
       ...prev,
       [field]: value,
     }))
-  }
-
-  if (!account) {
-    return (
-      <AppAlert action={<Button variant="outline">连接钱包</Button>}>
-        请先连接钱包以使用交易功能
-      </AppAlert>
-    )
   }
 
   return (
@@ -126,14 +83,14 @@ export function TradeForm() {
           <Label htmlFor="tradeType">交易类型</Label>
           <Select
             value={formData.tradeType}
-            onValueChange={(value: TradeType) => handleInputChange('tradeType', value)}
+            onValueChange={(value: 'BUY' | 'SELL') => handleInputChange('tradeType', value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="选择交易类型" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={TradeType.BUY}>买入</SelectItem>
-              <SelectItem value={TradeType.SELL}>卖出</SelectItem>
+              <SelectItem value="BUY">买入</SelectItem>
+              <SelectItem value="SELL">卖出</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -165,14 +122,13 @@ export function TradeForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={logTradeMutation.isPending}
         >
-          {logTradeMutation.isPending ? '提交中...' : '提交交易'}
+          提交交易
         </Button>
       </form>
 
       <div className="mt-4 text-sm text-muted-foreground">
-        <p>当前钱包地址: {account.address.toString()}</p>
+        <p>当前表单数据: {JSON.stringify(formData, null, 2)}</p>
       </div>
     </div>
   )
