@@ -15,14 +15,44 @@ interface TradeFormData {
   price: string
 }
 
+// 生成随机交易ID
+function generateTradeId(): string {
+  return `TRADE_${Date.now()}_${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+}
+
+// 生成随机用户ID
+function generateUserId(): string {
+  return `USER_${Math.random().toString(36).substr(2, 6).toUpperCase()}`
+}
+
+// 生成随机基金ID
+function generateFundId(): string {
+  return `FUND_${Math.random().toString(36).substr(2, 8).toUpperCase()}`
+}
+
+// 生成随机数量
+function generateAmount(): string {
+  return Math.floor(Math.random() * 1000 + 1).toString()
+}
+
+// 生成随机价格
+function generatePrice(): string {
+  return (Math.random() * 100 + 1).toFixed(2)
+}
+
+// 生成随机交易类型
+function generateTradeType(): 'BUY' | 'SELL' {
+  return Math.random() > 0.5 ? 'BUY' : 'SELL'
+}
+
 export function TradeForm() {
   const [formData, setFormData] = useState<TradeFormData>({
-    id: '',
-    userId: '',
-    fundId: '',
-    tradeType: 'BUY',
-    amount: '',
-    price: '',
+    id: generateTradeId(),
+    userId: generateUserId(),
+    fundId: generateFundId(),
+    tradeType: generateTradeType(),
+    amount: generateAmount(),
+    price: generatePrice(),
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,9 +71,52 @@ export function TradeForm() {
     }))
   }
 
+  // 填充随机数据
+  const fillRandomData = () => {
+    setFormData({
+      id: generateTradeId(),
+      userId: generateUserId(),
+      fundId: generateFundId(),
+      tradeType: generateTradeType(),
+      amount: generateAmount(),
+      price: generatePrice(),
+    })
+  }
+
+  // 清空表单
+  const clearForm = () => {
+    setFormData({
+      id: '',
+      userId: '',
+      fundId: '',
+      tradeType: 'BUY',
+      amount: '',
+      price: '',
+    })
+  }
+
   return (
     <div className="max-w-md mx-auto p-6 bg-card rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold mb-6 text-center">提交交易</h2>
+      
+      <div className="mb-4 flex gap-2">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={fillRandomData}
+          className="flex-1"
+        >
+          填充随机数据
+        </Button>
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={clearForm}
+          className="flex-1"
+        >
+          清空表单
+        </Button>
+      </div>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
@@ -128,7 +201,10 @@ export function TradeForm() {
       </form>
 
       <div className="mt-4 text-sm text-muted-foreground">
-        <p>当前表单数据: {JSON.stringify(formData, null, 2)}</p>
+        <p className="font-semibold mb-2">当前表单数据:</p>
+        <pre className="bg-muted p-2 rounded text-xs overflow-auto">
+          {JSON.stringify(formData, null, 2)}
+        </pre>
       </div>
     </div>
   )
