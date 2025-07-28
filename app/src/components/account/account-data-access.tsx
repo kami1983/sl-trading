@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useWalletUi } from '@wallet-ui/react'
 import {
   type Address,
+  address,
   airdropFactory,
   createTransaction,
   getBase58Decoder,
@@ -14,6 +15,7 @@ import {
 import { toast } from 'sonner'
 import { toastTx } from '@/components/toast-tx'
 import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
+import { useWalletTransactionSignAndSend } from '@/components/solana/use-wallet-transaction-sign-and-send'
 
 function useGetBalanceQueryKey({ address }: { address: Address }) {
   const { cluster } = useWalletUi()
@@ -148,4 +150,112 @@ export function useRequestAirdropMutation({ address }: { address: Address }) {
       await Promise.all([invalidateBalanceQuery(), invalidateSignaturesQuery()])
     },
   })
+}
+
+export function useLogTradeMutation({ address }: { address: Address }) {
+  const { account } = useWalletUi()
+  const signer = useWalletUiSigner()
+  const signAndSend = useWalletTransactionSignAndSend()
+  const invalidateSignaturesQuery = useInvalidateGetSignaturesQuery({ address })
+
+  return useMutation({
+    mutationFn: async (params: {
+      id: string
+      userId: string
+      fundId: string
+      tradeType: 'BUY' | 'SELL'
+      amount: number
+      price: number
+      timestamp?: number
+    }) => {
+      if (!account || !signer) {
+        throw new Error('请先连接钱包')
+      }
+
+      try {
+        // 创建 log_trade 指令
+        const instruction = createLogTradeInstruction({
+          ...params,
+          timestamp: params.timestamp || Date.now(),
+        })
+
+        const signature = await signAndSend(instruction, signer)
+        console.log('Log trade transaction signature:', signature)
+        return signature
+      } catch (error: unknown) {
+        console.log('error', `Log trade transaction failed! ${error}`)
+        throw error
+      }
+    },
+    onSuccess: async (tx) => {
+      toastTx(tx, '交易记录提交成功')
+      await invalidateSignaturesQuery()
+    },
+    onError: (error) => {
+      toast.error(`交易记录提交失败! ${error}`)
+    },
+  })
+}
+
+// 创建 log_trade 指令的辅助函数
+function createLogTradeInstruction(params: {
+  id: string
+  userId: string
+  fundId: string
+  tradeType: 'BUY' | 'SELL'
+  amount: number
+  price: number
+  timestamp: number
+}) {
+  // 程序地址
+  const PROGRAM_ID = address('19g7kgLjp6TKgtHCgs5rZseG4eeKNqhXf3AhAmRJrtW')
+  
+  // 指令标识符 (discriminator) - 这是 log_trade 方法的标识符
+  const discriminator = new Uint8Array([70, 253, 98, 112, 79, 171, 112, 145])
+  
+  // 序列化参数
+  const encoder = new TextEncoder()
+  
+  // 序列化字符串参数
+  const idBytes = encoder.encode(params.id)
+  const userIdBytes = encoder.encode(params.userId)
+  const fundIdBytes = encoder.encode(params.fundId)
+  
+  // 序列化数字参数
+  const amountBuffer = new ArrayBuffer(8)
+  const amountView = new DataView(amountBuffer)
+  amountView.setBigUint64(0, BigInt(params.amount), true)
+  
+  const priceBuffer = new ArrayBuffer(8)
+  const priceView = new DataView(priceBuffer)
+  priceView.setBigUint64(0, BigInt(params.price), true)
+  
+  const timestampBuffer = new ArrayBuffer(8)
+  const timestampView = new DataView(timestampBuffer)
+  timestampView.setBigInt64(0, BigInt(params.timestamp), true)
+  
+  // 序列化 TradeType 枚举
+  const tradeTypeBuffer = new ArrayBuffer(1)
+  const tradeTypeView = new DataView(tradeTypeBuffer)
+  tradeTypeView.setUint8(0, params.tradeType === 'BUY' ? 0 : 1)
+  
+  // 组合所有数据
+  const data = new Uint8Array([
+    ...discriminator,
+    ...new Uint8Array(4), // id 字符串长度 (4 bytes)
+    ...idBytes,
+    ...new Uint8Array(4), // userId 字符串长度 (4 bytes)
+    ...userIdBytes,
+    ...new Uint8Array(4), // fundId 字符串长度 (4 bytes)
+    ...fundIdBytes,
+    ...new Uint8Array(tradeTypeBuffer),
+    ...new Uint8Array(amountBuffer),
+    ...new Uint8Array(priceBuffer),
+    ...new Uint8Array(timestampBuffer),
+  ])
+  
+  return {
+    programAddress: PROGRAM_ID,
+    data,
+  }
 }
