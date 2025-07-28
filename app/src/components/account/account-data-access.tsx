@@ -11,6 +11,7 @@ import {
   lamports,
   signAndSendTransactionMessageWithSigners,
   type SolanaClient,
+  type AccountRole,
 } from 'gill'
 import { toast } from 'sonner'
 import { toastTx } from '@/components/toast-tx'
@@ -221,6 +222,19 @@ function createLogTradeInstruction(params: {
   const userIdBytes = encoder.encode(params.userId)
   const fundIdBytes = encoder.encode(params.fundId)
   
+  // 创建字符串长度的 buffer
+  const idLengthBuffer = new ArrayBuffer(4)
+  const idLengthView = new DataView(idLengthBuffer)
+  idLengthView.setUint32(0, idBytes.length, true)
+  
+  const userIdLengthBuffer = new ArrayBuffer(4)
+  const userIdLengthView = new DataView(userIdLengthBuffer)
+  userIdLengthView.setUint32(0, userIdBytes.length, true)
+  
+  const fundIdLengthBuffer = new ArrayBuffer(4)
+  const fundIdLengthView = new DataView(fundIdLengthBuffer)
+  fundIdLengthView.setUint32(0, fundIdBytes.length, true)
+  
   // 序列化数字参数
   const amountBuffer = new ArrayBuffer(8)
   const amountView = new DataView(amountBuffer)
@@ -242,20 +256,25 @@ function createLogTradeInstruction(params: {
   // 组合所有数据
   const data = new Uint8Array([
     ...discriminator,
-    ...new Uint8Array(4), // id 字符串长度 (4 bytes)
-    ...idBytes,
-    ...new Uint8Array(4), // userId 字符串长度 (4 bytes)
-    ...userIdBytes,
-    ...new Uint8Array(4), // fundId 字符串长度 (4 bytes)
-    ...fundIdBytes,
-    ...new Uint8Array(tradeTypeBuffer),
-    ...new Uint8Array(amountBuffer),
-    ...new Uint8Array(priceBuffer),
-    ...new Uint8Array(timestampBuffer),
+    ...new Uint8Array(idLengthBuffer),      // id 字符串长度
+    ...idBytes,                              // id 内容
+    ...new Uint8Array(userIdLengthBuffer),  // userId 字符串长度
+    ...userIdBytes,                          // userId 内容
+    ...new Uint8Array(fundIdLengthBuffer),  // fundId 字符串长度
+    ...fundIdBytes,                          // fundId 内容
+    ...new Uint8Array(tradeTypeBuffer),     // 交易类型
+    ...new Uint8Array(amountBuffer),        // 数量
+    ...new Uint8Array(priceBuffer),         // 价格
+    ...new Uint8Array(timestampBuffer),     // 时间戳
   ])
   
   return {
     programAddress: PROGRAM_ID,
     data,
+    accounts: [
+      { role: 'signer' as AccountRole, address: address(params.userId) },     // 用户账户
+      { role: 'writable' as AccountRole, address: address(params.fundId) },   // 基金账户
+      { role: 'readonly' as AccountRole, address: PROGRAM_ID }                // 程序账户
+    ]
   }
 }

@@ -69,13 +69,15 @@ export function AccountButtons({ address }: { address: Address }) {
 
   const handleTestLogTrade = async () => {
     try {
+      // 使用实际的钱包地址
+      const testId = Date.now().toString().slice(-6)
       const result = await logTrade.mutateAsync({
-        id: `test-${Date.now()}`,
-        userId: "test-user",
-        fundId: "test-fund",
+        id: testId,
+        userId: address.toString(),    // 使用当前钱包地址
+        fundId: address.toString(),    // 测试时使用同一个地址
         tradeType: "BUY",
         amount: 100,
-        price: 150000, // 1.5 * 100000，使用整数表示价格
+        price: 150000,
         timestamp: Date.now()
       })
       console.log('交易记录测试成功:', result)
