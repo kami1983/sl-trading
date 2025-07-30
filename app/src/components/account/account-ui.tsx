@@ -18,7 +18,6 @@ import {
   useGetTokenAccountsQuery,
   useRequestAirdropMutation,
   useTransferSolMutation,
-  useLogTradeMutation,
 } from './account-data-access'
 
 export function AccountBalance({ address }: { address: Address }) {
@@ -65,26 +64,6 @@ export function AccountBalanceCheck({ address }: { address: Address }) {
 
 export function AccountButtons({ address }: { address: Address }) {
   const { cluster } = useWalletUi()
-  const logTrade = useLogTradeMutation({ address })
-
-  const handleTestLogTrade = async () => {
-    try {
-      // 使用实际的钱包地址
-      const testId = Date.now().toString().slice(-6)
-      const result = await logTrade.mutateAsync({
-        id: testId,
-        userId: address.toString(),    // 使用当前钱包地址
-        fundId: address.toString(),    // 测试时使用同一个地址
-        tradeType: "BUY",
-        amount: 100,
-        price: 150000,
-        timestamp: Date.now()
-      })
-      console.log('交易记录测试成功:', result)
-    } catch (error) {
-      console.error('交易记录测试失败:', error)
-    }
-  }
 
   return (
     <div>
@@ -94,16 +73,6 @@ export function AccountButtons({ address }: { address: Address }) {
           <ModalSend address={address} />
         </ErrorBoundary>
         <ModalReceive address={address} />
-        {/* 添加测试按钮 */}
-        {cluster.id !== 'solana:mainnet' && (
-          <Button 
-            variant="outline" 
-            onClick={handleTestLogTrade}
-            className="bg-yellow-100"
-          >
-            测试交易记录
-          </Button>
-        )}
       </div>
     </div>
   )
