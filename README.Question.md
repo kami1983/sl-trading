@@ -71,6 +71,6 @@ const transaction = pipe(
 ### Codama 工具
 * 是生成 Solana 程序客户端的标准工具
 ```
-首先安装：npm install --save-dev @codama-idl/codama @codama-idl/nodes @codama-idl/renderers-js
+首先安装：pnpm add -D codama @codama/nodes-from-anchor @codama/renderers-js @codama/visitors-core
 
 ```

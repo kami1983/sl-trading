@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useWalletUi } from '@wallet-ui/react'
 import {
   type Address,
-  address,
   airdropFactory,
   createTransaction,
   getBase58Decoder,
@@ -18,14 +17,17 @@ import { toast } from 'sonner'
 import { toastTx } from '@/components/toast-tx'
 import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
 
-// 程序常量
-const LEARN_SOLANA_PROGRAM_ADDRESS = address('19g7kgLjp6TKgtHCgs5rZseG4eeKNqhXf3AhAmRJrtW')
+// ==================== Codama 自动生成的客户端 ====================
+import { 
+  getLogTradeInstruction as getLogTradeInstructionGenerated
+} from '@/generated/instructions'
+import { 
+  TradeType as GeneratedTradeType
+} from '@/generated/types'
 
-// logTrade 指令的 discriminator
-const LOG_TRADE_DISCRIMINATOR = new Uint8Array([70, 253, 98, 112, 79, 171, 112, 145])
-
-// 交易类型枚举
-export type TradeType = { buy: {} } | { sell: {} }
+// 为了保持兼容性，重新导出类型
+export type TradeType = GeneratedTradeType
+export const TradeType = GeneratedTradeType
 
 // logTrade 参数类型
 export interface LogTradeData {
@@ -38,51 +40,9 @@ export interface LogTradeData {
   timestamp?: bigint
 }
 
-// ==================== Gill-Style Instruction Builder ====================
+// ==================== Gill-Style Transaction Builder 使用 Codama ====================
 
-// Borsh 序列化工具类 - 符合 Solana 标准
-class BorshSerializer {
-  private buffer: number[] = []
-
-  addString(value: string): this {
-    const encoded = new TextEncoder().encode(value)
-    this.addU32(encoded.length)
-    this.buffer.push(...encoded)
-    return this
-  }
-
-  addU32(value: number): this {
-    const buffer = new ArrayBuffer(4)
-    new DataView(buffer).setUint32(0, value, true)
-    this.buffer.push(...new Uint8Array(buffer))
-    return this
-  }
-
-  addU64(value: bigint): this {
-    const buffer = new ArrayBuffer(8)
-    new DataView(buffer).setBigUint64(0, value, true)
-    this.buffer.push(...new Uint8Array(buffer))
-    return this
-  }
-
-  addI64(value: bigint): this {
-    const buffer = new ArrayBuffer(8)
-    new DataView(buffer).setBigInt64(0, value, true)
-    this.buffer.push(...new Uint8Array(buffer))
-    return this
-  }
-
-  addEnum(variantIndex: number): this {
-    this.buffer.push(variantIndex)
-    return this
-  }
-
-  toUint8Array(): Uint8Array {
-    return new Uint8Array(this.buffer)
-  }
-}
-
-// Gill-style instruction builder - 模仿 getTransferSolInstruction 的风格
+// Codama-enhanced instruction builder - 使用自动生成的客户端
 export function getLogTradeInstruction(input: {
   id: string
   userId: string
@@ -95,33 +55,17 @@ export function getLogTradeInstruction(input: {
 }): Instruction {
   const timestamp = input.timestamp || BigInt(Date.now())
   
-  // 序列化指令参数
-  const instructionData = new BorshSerializer()
-    .addString(input.id)
-    .addString(input.userId)
-    .addString(input.fundId)
-    .addEnum('buy' in input.tradeType ? 0 : 1) // TradeType 枚举
-    .addU64(input.amount)
-    .addU64(input.price)
-    .addI64(timestamp)
-    .toUint8Array()
-
-  // 构建完整的指令数据（discriminator + 参数）
-  const fullInstructionData = new Uint8Array([
-    ...LOG_TRADE_DISCRIMINATOR,
-    ...instructionData,
-  ])
-
-  return {
-    programAddress: LEARN_SOLANA_PROGRAM_ADDRESS,
-    accounts: [
-      {
-        address: input.signer.address,
-        role: 3, // AccountRole.WRITABLE_SIGNER
-      },
-    ],
-    data: fullInstructionData,
-  }
+  // 使用 Codama 生成的指令构建器
+  return getLogTradeInstructionGenerated({
+    signer: input.signer,
+    id: input.id,
+    userId: input.userId,
+    fundId: input.fundId,
+    tradeType: input.tradeType,
+    amount: input.amount,
+    price: input.price,
+    timestamp: timestamp,
+  })
 }
 
 // Transaction builder - 模仿 gill 的 transaction builders 风格

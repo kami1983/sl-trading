@@ -20,7 +20,7 @@ import {
   useTransferSolMutation,
   useLogTradeMutation,
   type LogTradeData,
-  type TradeType,
+  TradeType,
 } from './account-data-access'
 
 export function AccountBalance({ address }: { address: Address }) {
@@ -352,7 +352,7 @@ function ModalLogTrade({ address }: { address: Address }) {
       id: tradeData.id,
       userId: tradeData.userId,
       fundId: tradeData.fundId,
-      tradeType: tradeData.tradeType === 'buy' ? { buy: {} } : { sell: {} },
+      tradeType: tradeData.tradeType === 'buy' ? TradeType.BUY : TradeType.SELL,
       amount: BigInt(tradeData.amount),
       price: BigInt(tradeData.price),
     }
