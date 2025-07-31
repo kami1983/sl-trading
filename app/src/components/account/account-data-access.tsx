@@ -38,11 +38,12 @@ export interface LogTradeData {
   timestamp?: bigint
 }
 
-// 标准化的序列化工具 - 符合 Anchor/Borsh 格式
-class InstructionDataBuilder {
+// ==================== Gill-Style Instruction Builder ====================
+
+// Borsh 序列化工具类 - 符合 Solana 标准
+class BorshSerializer {
   private buffer: number[] = []
 
-  // 序列化字符串 (Borsh 格式: 长度 + 内容)
   addString(value: string): this {
     const encoded = new TextEncoder().encode(value)
     this.addU32(encoded.length)
@@ -50,77 +51,108 @@ class InstructionDataBuilder {
     return this
   }
 
-  // 序列化 32 位无符号整数
   addU32(value: number): this {
     const buffer = new ArrayBuffer(4)
-    new DataView(buffer).setUint32(0, value, true) // little-endian
+    new DataView(buffer).setUint32(0, value, true)
     this.buffer.push(...new Uint8Array(buffer))
     return this
   }
 
-  // 序列化 64 位无符号整数
   addU64(value: bigint): this {
     const buffer = new ArrayBuffer(8)
-    new DataView(buffer).setBigUint64(0, value, true) // little-endian
+    new DataView(buffer).setBigUint64(0, value, true)
     this.buffer.push(...new Uint8Array(buffer))
     return this
   }
 
-  // 序列化 64 位有符号整数
   addI64(value: bigint): this {
     const buffer = new ArrayBuffer(8)
-    new DataView(buffer).setBigInt64(0, value, true) // little-endian
+    new DataView(buffer).setBigInt64(0, value, true)
     this.buffer.push(...new Uint8Array(buffer))
     return this
   }
 
-  // 序列化交易类型枚举
-  addTradeType(tradeType: TradeType): this {
-    const typeValue = 'buy' in tradeType ? 0 : 1
-    this.buffer.push(typeValue)
+  addEnum(variantIndex: number): this {
+    this.buffer.push(variantIndex)
     return this
   }
 
-  // 获取最终的字节数组
-  build(): Uint8Array {
+  toUint8Array(): Uint8Array {
     return new Uint8Array(this.buffer)
   }
 }
 
-// 创建 logTrade 指令
-function createLogTradeInstruction(
-  data: LogTradeData,
+// Gill-style instruction builder - 模仿 getTransferSolInstruction 的风格
+export function getLogTradeInstruction(input: {
+  id: string
+  userId: string
+  fundId: string
+  tradeType: TradeType
+  amount: bigint
+  price: bigint
+  timestamp?: bigint
   signer: TransactionSendingSigner
-): Instruction {
-  const timestamp = data.timestamp || BigInt(Date.now())
+}): Instruction {
+  const timestamp = input.timestamp || BigInt(Date.now())
   
-  // 使用标准化的序列化工具构建指令数据
-  const argsData = new InstructionDataBuilder()
-    .addString(data.id)
-    .addString(data.userId)
-    .addString(data.fundId)
-    .addTradeType(data.tradeType)
-    .addU64(data.amount)
-    .addU64(data.price)
+  // 序列化指令参数
+  const instructionData = new BorshSerializer()
+    .addString(input.id)
+    .addString(input.userId)
+    .addString(input.fundId)
+    .addEnum('buy' in input.tradeType ? 0 : 1) // TradeType 枚举
+    .addU64(input.amount)
+    .addU64(input.price)
     .addI64(timestamp)
-    .build()
+    .toUint8Array()
 
-  // 组合 discriminator 和序列化的参数
-  const instructionData = new Uint8Array([
+  // 构建完整的指令数据（discriminator + 参数）
+  const fullInstructionData = new Uint8Array([
     ...LOG_TRADE_DISCRIMINATOR,
-    ...argsData,
+    ...instructionData,
   ])
 
   return {
     programAddress: LEARN_SOLANA_PROGRAM_ADDRESS,
     accounts: [
       {
-        address: signer.address,
+        address: input.signer.address,
         role: 3, // AccountRole.WRITABLE_SIGNER
       },
     ],
-    data: instructionData,
+    data: fullInstructionData,
   }
+}
+
+// Transaction builder - 模仿 gill 的 transaction builders 风格
+export function buildLogTradeTransaction(input: {
+  id: string
+  userId: string
+  fundId: string
+  tradeType: TradeType
+  amount: bigint
+  price: bigint
+  timestamp?: bigint
+  signer: TransactionSendingSigner
+  latestBlockhash: Parameters<typeof createTransaction>[0]['latestBlockhash']
+}) {
+  const instruction = getLogTradeInstruction({
+    id: input.id,
+    userId: input.userId,
+    fundId: input.fundId,
+    tradeType: input.tradeType,
+    amount: input.amount,
+    price: input.price,
+    timestamp: input.timestamp,
+    signer: input.signer,
+  })
+
+  return createTransaction({
+    feePayer: input.signer,
+    version: 0,
+    latestBlockhash: input.latestBlockhash,
+    instructions: [instruction],
+  })
 }
 
 function useGetBalanceQueryKey({ address }: { address: Address }) {
@@ -248,13 +280,11 @@ export function useLogTradeMutation({ address }: { address: Address }) {
       try {
         const { value: latestBlockhash } = await client.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send()
 
-        const instruction = createLogTradeInstruction(input, signer)
-
-        const transaction = createTransaction({
-          feePayer: signer,
-          version: 0,
+        // 使用 gill-style transaction builder
+        const transaction = buildLogTradeTransaction({
+          ...input,
+          signer,
           latestBlockhash,
-          instructions: [instruction],
         })
 
         const signatureBytes = await signAndSendTransactionMessageWithSigners(transaction)
