@@ -9,6 +9,11 @@ const compat = new FlatCompat({
   baseDirectory: __dirname,
 })
 
-const eslintConfig = [...compat.extends('next/core-web-vitals', 'next/typescript')]
+const eslintConfig = [
+  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  {
+    ignores: ['src/generated/**/*'] // 忽略 Codama 生成的代码
+  }
+]
 
 export default eslintConfig

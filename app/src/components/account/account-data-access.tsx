@@ -10,24 +10,17 @@ import {
   lamports,
   signAndSendTransactionMessageWithSigners,
   type SolanaClient,
-  type TransactionSendingSigner,
-  type Instruction,
 } from 'gill'
 import { toast } from 'sonner'
 import { toastTx } from '@/components/toast-tx'
 import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
 
 // ==================== Codama 自动生成的客户端 ====================
-import { 
-  getLogTradeInstruction as getLogTradeInstructionGenerated
-} from '@/generated/instructions'
-import { 
-  TradeType as GeneratedTradeType
-} from '@/generated/types'
+import { getLogTradeInstruction } from '@/generated/instructions'
+import { TradeType } from '@/generated/types'
 
-// 为了保持兼容性，重新导出类型
-export type TradeType = GeneratedTradeType
-export const TradeType = GeneratedTradeType
+// 重新导出以保持API一致性
+export { TradeType }
 
 // logTrade 参数类型
 export interface LogTradeData {
@@ -40,64 +33,7 @@ export interface LogTradeData {
   timestamp?: bigint
 }
 
-// ==================== Gill-Style Transaction Builder 使用 Codama ====================
-
-// Codama-enhanced instruction builder - 使用自动生成的客户端
-export function getLogTradeInstruction(input: {
-  id: string
-  userId: string
-  fundId: string
-  tradeType: TradeType
-  amount: bigint
-  price: bigint
-  timestamp?: bigint
-  signer: TransactionSendingSigner
-}): Instruction {
-  const timestamp = input.timestamp || BigInt(Date.now())
-  
-  // 使用 Codama 生成的指令构建器
-  return getLogTradeInstructionGenerated({
-    signer: input.signer,
-    id: input.id,
-    userId: input.userId,
-    fundId: input.fundId,
-    tradeType: input.tradeType,
-    amount: input.amount,
-    price: input.price,
-    timestamp: timestamp,
-  })
-}
-
-// Transaction builder - 模仿 gill 的 transaction builders 风格
-export function buildLogTradeTransaction(input: {
-  id: string
-  userId: string
-  fundId: string
-  tradeType: TradeType
-  amount: bigint
-  price: bigint
-  timestamp?: bigint
-  signer: TransactionSendingSigner
-  latestBlockhash: Parameters<typeof createTransaction>[0]['latestBlockhash']
-}) {
-  const instruction = getLogTradeInstruction({
-    id: input.id,
-    userId: input.userId,
-    fundId: input.fundId,
-    tradeType: input.tradeType,
-    amount: input.amount,
-    price: input.price,
-    timestamp: input.timestamp,
-    signer: input.signer,
-  })
-
-  return createTransaction({
-    feePayer: input.signer,
-    version: 0,
-    latestBlockhash: input.latestBlockhash,
-    instructions: [instruction],
-  })
-}
+// ==================== 直接使用 Codama 生成的客户端 ====================
 
 function useGetBalanceQueryKey({ address }: { address: Address }) {
   const { cluster } = useWalletUi()
@@ -224,11 +160,24 @@ export function useLogTradeMutation({ address }: { address: Address }) {
       try {
         const { value: latestBlockhash } = await client.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send()
 
-        // 使用 gill-style transaction builder
-        const transaction = buildLogTradeTransaction({
-          ...input,
-          signer,
+        // 直接使用 Codama 生成的指令
+        const timestamp = input.timestamp || BigInt(Date.now())
+        const instruction = getLogTradeInstruction({
+          signer: signer,
+          id: input.id,
+          userId: input.userId,
+          fundId: input.fundId,
+          tradeType: input.tradeType,
+          amount: input.amount,
+          price: input.price,
+          timestamp: timestamp,
+        })
+
+        const transaction = createTransaction({
+          feePayer: signer,
+          version: 0,
           latestBlockhash,
+          instructions: [instruction],
         })
 
         const signatureBytes = await signAndSendTransactionMessageWithSigners(transaction)
