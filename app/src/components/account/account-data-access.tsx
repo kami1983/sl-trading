@@ -38,34 +38,52 @@ export interface LogTradeData {
   timestamp?: bigint
 }
 
-// 序列化函数
-function serializeString(str: string): Uint8Array {
-  const encoded = new TextEncoder().encode(str)
-  const lengthBuffer = new ArrayBuffer(4)
-  const lengthView = new DataView(lengthBuffer)
-  lengthView.setUint32(0, encoded.length, true)
-  return new Uint8Array([...new Uint8Array(lengthBuffer), ...encoded])
-}
+// 标准化的序列化工具 - 符合 Anchor/Borsh 格式
+class InstructionDataBuilder {
+  private buffer: number[] = []
 
-function serializeU64(value: bigint): Uint8Array {
-  const buffer = new ArrayBuffer(8)
-  const view = new DataView(buffer)
-  view.setBigUint64(0, value, true)
-  return new Uint8Array(buffer)
-}
+  // 序列化字符串 (Borsh 格式: 长度 + 内容)
+  addString(value: string): this {
+    const encoded = new TextEncoder().encode(value)
+    this.addU32(encoded.length)
+    this.buffer.push(...encoded)
+    return this
+  }
 
-function serializeI64(value: bigint): Uint8Array {
-  const buffer = new ArrayBuffer(8)
-  const view = new DataView(buffer)
-  view.setBigInt64(0, value, true)
-  return new Uint8Array(buffer)
-}
+  // 序列化 32 位无符号整数
+  addU32(value: number): this {
+    const buffer = new ArrayBuffer(4)
+    new DataView(buffer).setUint32(0, value, true) // little-endian
+    this.buffer.push(...new Uint8Array(buffer))
+    return this
+  }
 
-function serializeTradeType(tradeType: TradeType): Uint8Array {
-  if ('buy' in tradeType) {
-    return new Uint8Array([0]) // BUY = 0
-  } else {
-    return new Uint8Array([1]) // SELL = 1
+  // 序列化 64 位无符号整数
+  addU64(value: bigint): this {
+    const buffer = new ArrayBuffer(8)
+    new DataView(buffer).setBigUint64(0, value, true) // little-endian
+    this.buffer.push(...new Uint8Array(buffer))
+    return this
+  }
+
+  // 序列化 64 位有符号整数
+  addI64(value: bigint): this {
+    const buffer = new ArrayBuffer(8)
+    new DataView(buffer).setBigInt64(0, value, true) // little-endian
+    this.buffer.push(...new Uint8Array(buffer))
+    return this
+  }
+
+  // 序列化交易类型枚举
+  addTradeType(tradeType: TradeType): this {
+    const typeValue = 'buy' in tradeType ? 0 : 1
+    this.buffer.push(typeValue)
+    return this
+  }
+
+  // 获取最终的字节数组
+  build(): Uint8Array {
+    return new Uint8Array(this.buffer)
   }
 }
 
@@ -76,16 +94,21 @@ function createLogTradeInstruction(
 ): Instruction {
   const timestamp = data.timestamp || BigInt(Date.now())
   
-  // 序列化参数
-  const serializedData = new Uint8Array([
+  // 使用标准化的序列化工具构建指令数据
+  const argsData = new InstructionDataBuilder()
+    .addString(data.id)
+    .addString(data.userId)
+    .addString(data.fundId)
+    .addTradeType(data.tradeType)
+    .addU64(data.amount)
+    .addU64(data.price)
+    .addI64(timestamp)
+    .build()
+
+  // 组合 discriminator 和序列化的参数
+  const instructionData = new Uint8Array([
     ...LOG_TRADE_DISCRIMINATOR,
-    ...serializeString(data.id),
-    ...serializeString(data.userId),
-    ...serializeString(data.fundId),
-    ...serializeTradeType(data.tradeType),
-    ...serializeU64(data.amount),
-    ...serializeU64(data.price),
-    ...serializeI64(timestamp),
+    ...argsData,
   ])
 
   return {
@@ -96,7 +119,7 @@ function createLogTradeInstruction(
         role: 3, // AccountRole.WRITABLE_SIGNER
       },
     ],
-    data: serializedData,
+    data: instructionData,
   }
 }
 
