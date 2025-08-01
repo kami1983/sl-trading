@@ -2,7 +2,7 @@
 
 ## 🛡️ Security Overview
 
-This document outlines the security policy for the SL Trading Solana program.
+This document outlines the security policy for the SL Trading Solana program - a contract project for recording Second Life user transaction logs.
 
 ## 🐛 Reporting Security Vulnerabilities
 
@@ -10,7 +10,7 @@ If you discover a security vulnerability, please report it responsibly:
 
 ### Reporting Guidelines
 
-1. **Email**: Send details to your-email@example.com
+1. **GitHub Issues**: Create a security issue at https://github.com/kami1983/sl-trading/issues
 2. **Include**: 
    - Description of the vulnerability
    - Steps to reproduce
@@ -63,9 +63,10 @@ We encourage responsible disclosure of security vulnerabilities. We commit to:
 
 ## 📞 Contact Information
 
-- **Security Email**: your-email@example.com
+- **GitHub Issues**: https://github.com/kami1983/sl-trading/issues
 - **Project**: SL Trading
-- **Maintainer**: Your Name
+- **Repository**: https://github.com/kami1983/sl-trading
+- **Maintainer**: kami1983
 
 ## 🔗 Additional Resources
 
