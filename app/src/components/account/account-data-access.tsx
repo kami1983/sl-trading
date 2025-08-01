@@ -15,7 +15,7 @@ import { toast } from 'sonner'
 import { toastTx } from '@/components/toast-tx'
 import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
 
-// ==================== Codama 自动生成的客户端 ====================
+
 import { getLogTradeInstruction } from '@/generated/instructions'
 import { TradeType } from '@/generated/types'
 
@@ -32,8 +32,6 @@ export interface LogTradeData {
   price: bigint
   timestamp?: bigint
 }
-
-// ==================== 直接使用 Codama 生成的客户端 ====================
 
 function useGetBalanceQueryKey({ address }: { address: Address }) {
   const { cluster } = useWalletUi()
