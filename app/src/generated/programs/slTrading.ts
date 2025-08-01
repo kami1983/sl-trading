@@ -19,7 +19,7 @@ import {
 } from '../instructions';
 
 export const SL_TRADING_PROGRAM_ADDRESS =
-  '4qQT9GHrCsd7aNaetC1ei1xfCyJEgksQa4E7eZrUtagG' as Address<'4qQT9GHrCsd7aNaetC1ei1xfCyJEgksQa4E7eZrUtagG'>;
+  'EAJ7QiDXgXH31m57RhDFMHTkBrDzxrFpcN8xUkPUqHLi' as Address<'EAJ7QiDXgXH31m57RhDFMHTkBrDzxrFpcN8xUkPUqHLi'>;
 
 export enum SlTradingInstruction {
   Initialize,
@@ -58,7 +58,7 @@ export function identifySlTradingInstruction(
 }
 
 export type ParsedSlTradingInstruction<
-  TProgram extends string = '4qQT9GHrCsd7aNaetC1ei1xfCyJEgksQa4E7eZrUtagG',
+  TProgram extends string = 'EAJ7QiDXgXH31m57RhDFMHTkBrDzxrFpcN8xUkPUqHLi',
 > =
   | ({
       instructionType: SlTradingInstruction.Initialize;
