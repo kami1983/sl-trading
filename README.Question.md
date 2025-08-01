@@ -30,3 +30,47 @@ Token 发行后追踪：使用 Solscan
 交易调试：使用 Solana Explorer
 生态数据分析：使用 Solscan
 ```
+
+### SDK构造 Transaction Message 的构造顺序
+
+* 步骤 1️⃣：初始化交易消息
+createTransactionMessage({ version: "legacy" })
+创建一个 空的 Legacy 格式交易消息，不携带签名者、区块哈希或指令数据
+
+* 步骤 2️⃣：设定手续费支付者和签名者
+setTransactionMessageFeePayerSigner(signer, tx)
+为该交易消息设定 fee payer 和签名者信息。此步骤必需先完成，以便后续 instruction 的签名认证生效
+
+* 步骤 3️⃣：绑定交易有效期（Blockhash + 最后有效高度）
+setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx)
+设定区块哈希与有效高度（lastValidBlockHeight），确保交易在链上有生命期限制
+
+* 步骤 4️⃣：追加一组业务指令（Instructions）
+appendTransactionMessageInstructions([...], tx)
+把 Memo、Compute Unit 设置等指令追加到交易消息中.
+
+```
+举例：
+const transaction = pipe(
+  createTransactionMessage({ version: "legacy" }),
+  (tx) => setTransactionMessageFeePayerSigner(signer, tx),
+  (tx) => setTransactionMessageLifetimeUsingBlockhash(latestBlockhash, tx),
+  (tx) =>
+    appendTransactionMessageInstructions(
+      [
+        getAddMemoInstruction({ memo: "gm world!" }),
+        getSetComputeUnitLimitInstruction({ units: 5000 }),
+        getSetComputeUnitPriceInstruction({ microLamports: 1000 }),
+      ],
+      tx,
+    ),
+);
+
+```
+
+### Codama 工具
+* 是生成 Solana 程序客户端的标准工具
+```
+首先安装：pnpm add -D codama @codama/nodes-from-anchor @codama/renderers-js @codama/visitors-core
+
+```

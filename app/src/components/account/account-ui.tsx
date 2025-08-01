@@ -18,6 +18,9 @@ import {
   useGetTokenAccountsQuery,
   useRequestAirdropMutation,
   useTransferSolMutation,
+  useLogTradeMutation,
+  type LogTradeData,
+  TradeType,
 } from './account-data-access'
 
 export function AccountBalance({ address }: { address: Address }) {
@@ -73,6 +76,9 @@ export function AccountButtons({ address }: { address: Address }) {
           <ModalSend address={address} />
         </ErrorBoundary>
         <ModalReceive address={address} />
+        <ErrorBoundary errorComponent={() => null}>
+          <ModalLogTrade address={address} />
+        </ErrorBoundary>
       </div>
     </div>
   )
@@ -326,6 +332,119 @@ function ModalSend(props: { address: Address }) {
         type="number"
         value={amount}
       />
+    </AppModal>
+  )
+}
+
+function ModalLogTrade({ address }: { address: Address }) {
+  const mutation = useLogTradeMutation({ address })
+  const [tradeData, setTradeData] = useState({
+    id: '',
+    userId: '',
+    fundId: '',
+    tradeType: 'buy' as 'buy' | 'sell',
+    amount: '',
+    price: '',
+  })
+
+  const handleSubmit = async () => {
+    const logTradeData: LogTradeData = {
+      id: tradeData.id,
+      userId: tradeData.userId,
+      fundId: tradeData.fundId,
+      tradeType: tradeData.tradeType === 'buy' ? TradeType.BUY : TradeType.SELL,
+      amount: BigInt(tradeData.amount),
+      price: BigInt(tradeData.price),
+    }
+    
+    await mutation.mutateAsync(logTradeData)
+  }
+
+  const isFormValid = tradeData.id && tradeData.userId && tradeData.fundId && 
+                     tradeData.amount && tradeData.price
+
+  return (
+    <AppModal
+      title="记录交易"
+      submitDisabled={!isFormValid || mutation.isPending}
+      submitLabel="提交交易记录"
+      submit={handleSubmit}
+    >
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="tradeId">交易ID</Label>
+          <Input
+            disabled={mutation.isPending}
+            id="tradeId"
+            onChange={(e) => setTradeData(prev => ({ ...prev, id: e.target.value }))}
+            placeholder="例如: trade-001"
+            type="text"
+            value={tradeData.id}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="userId">用户ID</Label>
+          <Input
+            disabled={mutation.isPending}
+            id="userId"
+            onChange={(e) => setTradeData(prev => ({ ...prev, userId: e.target.value }))}
+            placeholder="例如: user-abc"
+            type="text"
+            value={tradeData.userId}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="fundId">基金ID</Label>
+          <Input
+            disabled={mutation.isPending}
+            id="fundId"
+            onChange={(e) => setTradeData(prev => ({ ...prev, fundId: e.target.value }))}
+            placeholder="例如: fund-xyz"
+            type="text"
+            value={tradeData.fundId}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="tradeType">交易类型</Label>
+          <select
+            disabled={mutation.isPending}
+            id="tradeType"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            value={tradeData.tradeType}
+            onChange={(e) => setTradeData(prev => ({ ...prev, tradeType: e.target.value as 'buy' | 'sell' }))}
+          >
+            <option value="buy">买入</option>
+            <option value="sell">卖出</option>
+          </select>
+        </div>
+        
+        <div>
+          <Label htmlFor="amount">数量 (最小单位)</Label>
+          <Input
+            disabled={mutation.isPending}
+            id="amount"
+            onChange={(e) => setTradeData(prev => ({ ...prev, amount: e.target.value }))}
+            placeholder="例如: 1000000"
+            type="number"
+            value={tradeData.amount}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="price">价格 (最小单位)</Label>
+          <Input
+            disabled={mutation.isPending}
+            id="price"
+            onChange={(e) => setTradeData(prev => ({ ...prev, price: e.target.value }))}
+            placeholder="例如: 50000000"
+            type="number"
+            value={tradeData.price}
+          />
+        </div>
+      </div>
     </AppModal>
   )
 }

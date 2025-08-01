@@ -15,6 +15,24 @@ import { toast } from 'sonner'
 import { toastTx } from '@/components/toast-tx'
 import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
 
+
+import { getLogTradeInstruction } from '@/generated/instructions'
+import { TradeType } from '@/generated/types'
+
+// 重新导出以保持API一致性
+export { TradeType }
+
+// logTrade 参数类型
+export interface LogTradeData {
+  id: string
+  userId: string
+  fundId: string
+  tradeType: TradeType
+  amount: bigint
+  price: bigint
+  timestamp?: bigint
+}
+
 function useGetBalanceQueryKey({ address }: { address: Address }) {
   const { cluster } = useWalletUi()
 
@@ -126,6 +144,57 @@ export function useTransferSolMutation({ address }: { address: Address }) {
     },
     onError: (error) => {
       toast.error(`Transaction failed! ${error}`)
+    },
+  })
+}
+
+export function useLogTradeMutation({ address }: { address: Address }) {
+  const { client } = useWalletUi()
+  const signer = useWalletUiSigner()
+  const invalidateSignaturesQuery = useInvalidateGetSignaturesQuery({ address })
+
+  return useMutation({
+    mutationFn: async (input: LogTradeData) => {
+      try {
+        const { value: latestBlockhash } = await client.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send()
+
+        // 直接使用 Codama 生成的指令
+        const timestamp = input.timestamp || BigInt(Date.now())
+        const instruction = getLogTradeInstruction({
+          signer: signer,
+          id: input.id,
+          userId: input.userId,
+          fundId: input.fundId,
+          tradeType: input.tradeType,
+          amount: input.amount,
+          price: input.price,
+          timestamp: timestamp,
+        })
+
+        const transaction = createTransaction({
+          feePayer: signer,
+          version: 0,
+          latestBlockhash,
+          instructions: [instruction],
+        })
+
+        const signatureBytes = await signAndSendTransactionMessageWithSigners(transaction)
+        const signature = getBase58Decoder().decode(signatureBytes)
+
+        console.log('LogTrade transaction signature:', signature)
+        return signature
+      } catch (error: unknown) {
+        console.log('error', `LogTrade transaction failed! ${error}`)
+        throw error
+      }
+    },
+    onSuccess: async (tx) => {
+      toastTx(tx)
+      toast.success('交易记录已成功提交到链上!')
+      await invalidateSignaturesQuery()
+    },
+    onError: (error) => {
+      toast.error(`交易记录提交失败! ${error}`)
     },
   })
 }
