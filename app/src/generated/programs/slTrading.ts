@@ -18,17 +18,17 @@ import {
   type ParsedLogTradeInstruction,
 } from '../instructions';
 
-export const LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS =
-  '19g7kgLjp6TKgtHCgs5rZseG4eeKNqhXf3AhAmRJrtW' as Address<'19g7kgLjp6TKgtHCgs5rZseG4eeKNqhXf3AhAmRJrtW'>;
+export const SL_TRADING_PROGRAM_ADDRESS =
+  '4qQT9GHrCsd7aNaetC1ei1xfCyJEgksQa4E7eZrUtagG' as Address<'4qQT9GHrCsd7aNaetC1ei1xfCyJEgksQa4E7eZrUtagG'>;
 
-export enum LearnSolanaProgramInstruction {
+export enum SlTradingInstruction {
   Initialize,
   LogTrade,
 }
 
-export function identifyLearnSolanaProgramInstruction(
+export function identifySlTradingInstruction(
   instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array
-): LearnSolanaProgramInstruction {
+): SlTradingInstruction {
   const data = 'data' in instruction ? instruction.data : instruction;
   if (
     containsBytes(
@@ -39,7 +39,7 @@ export function identifyLearnSolanaProgramInstruction(
       0
     )
   ) {
-    return LearnSolanaProgramInstruction.Initialize;
+    return SlTradingInstruction.Initialize;
   }
   if (
     containsBytes(
@@ -50,19 +50,19 @@ export function identifyLearnSolanaProgramInstruction(
       0
     )
   ) {
-    return LearnSolanaProgramInstruction.LogTrade;
+    return SlTradingInstruction.LogTrade;
   }
   throw new Error(
-    'The provided instruction could not be identified as a learnSolanaProgram instruction.'
+    'The provided instruction could not be identified as a slTrading instruction.'
   );
 }
 
-export type ParsedLearnSolanaProgramInstruction<
-  TProgram extends string = '19g7kgLjp6TKgtHCgs5rZseG4eeKNqhXf3AhAmRJrtW',
+export type ParsedSlTradingInstruction<
+  TProgram extends string = '4qQT9GHrCsd7aNaetC1ei1xfCyJEgksQa4E7eZrUtagG',
 > =
   | ({
-      instructionType: LearnSolanaProgramInstruction.Initialize;
+      instructionType: SlTradingInstruction.Initialize;
     } & ParsedInitializeInstruction<TProgram>)
   | ({
-      instructionType: LearnSolanaProgramInstruction.LogTrade;
+      instructionType: SlTradingInstruction.LogTrade;
     } & ParsedLogTradeInstruction<TProgram>);

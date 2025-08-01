@@ -1,0 +1,10 @@
+=======================================================================
+Name: SL Trading
+Project: https://github.com/kami1983/sl-trading
+Contacts: https://github.com/kami1983/sl-trading/issues
+Policy: https://github.com/kami1983/sl-trading/blob/main/SECURITY.md
+Preferred-Languages: en, zh
+Auditors: None
+Acknowledgments: 
+Thank you to the Solana community for security reviews and feedback.
+======================================================================= 

@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // 读取 IDL 文件
-const idlPath = path.join(__dirname, '../../target/idl/learn_solana_program.json');
+const idlPath = path.join(__dirname, '../../target/idl/sl_trading.json');
 const idlContent = fs.readFileSync(idlPath, 'utf-8');
 const anchorIdl = JSON.parse(idlContent) as AnchorIdl;
 

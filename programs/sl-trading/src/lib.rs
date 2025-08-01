@@ -1,9 +1,21 @@
 use anchor_lang::prelude::*;
+use solana_security_txt::security_txt;
 
-declare_id!("19g7kgLjp6TKgtHCgs5rZseG4eeKNqhXf3AhAmRJrtW");
+declare_id!("EAJ7QiDXgXH31m57RhDFMHTkBrDzxrFpcN8xUkPUqHLi");
+
+// Include security.txt for program security information
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "SL Trading",
+    project_url: "https://github.com/kami1983/sl-trading",
+    contacts: "https://github.com/kami1983/sl-trading/issues",
+    policy: "https://github.com/kami1983/sl-trading/blob/main/SECURITY.md",
+    preferred_languages: "en,zh",
+    auditors: "None"
+}
 
 #[program]
-pub mod learn_solana_program {
+pub mod sl_trading {
     use super::*;
 
     pub fn initialize(_ctx: Context<Initialize>) -> Result<()> {

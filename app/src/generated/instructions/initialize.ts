@@ -28,7 +28,7 @@ import {
   type TransactionSigner,
   type WritableSignerAccount,
 } from '@solana/kit';
-import { LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS } from '../programs';
+import { SL_TRADING_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
 export const INITIALIZE_DISCRIMINATOR = new Uint8Array([
@@ -40,7 +40,7 @@ export function getInitializeDiscriminatorBytes() {
 }
 
 export type InitializeInstruction<
-  TProgram extends string = typeof LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS,
+  TProgram extends string = typeof SL_TRADING_PROGRAM_ADDRESS,
   TAccountSigner extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
@@ -88,14 +88,13 @@ export type InitializeInput<TAccountSigner extends string = string> = {
 
 export function getInitializeInstruction<
   TAccountSigner extends string,
-  TProgramAddress extends Address = typeof LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof SL_TRADING_PROGRAM_ADDRESS,
 >(
   input: InitializeInput<TAccountSigner>,
   config?: { programAddress?: TProgramAddress }
 ): InitializeInstruction<TProgramAddress, TAccountSigner> {
   // Program address.
-  const programAddress =
-    config?.programAddress ?? LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? SL_TRADING_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -117,7 +116,7 @@ export function getInitializeInstruction<
 }
 
 export type ParsedInitializeInstruction<
-  TProgram extends string = typeof LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS,
+  TProgram extends string = typeof SL_TRADING_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;

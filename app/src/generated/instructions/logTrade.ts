@@ -38,7 +38,7 @@ import {
   type TransactionSigner,
   type WritableSignerAccount,
 } from '@solana/kit';
-import { LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS } from '../programs';
+import { SL_TRADING_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getTradeTypeDecoder,
@@ -56,7 +56,7 @@ export function getLogTradeDiscriminatorBytes() {
 }
 
 export type LogTradeInstruction<
-  TProgram extends string = typeof LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS,
+  TProgram extends string = typeof SL_TRADING_PROGRAM_ADDRESS,
   TAccountSigner extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
@@ -144,14 +144,13 @@ export type LogTradeInput<TAccountSigner extends string = string> = {
 
 export function getLogTradeInstruction<
   TAccountSigner extends string,
-  TProgramAddress extends Address = typeof LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof SL_TRADING_PROGRAM_ADDRESS,
 >(
   input: LogTradeInput<TAccountSigner>,
   config?: { programAddress?: TProgramAddress }
 ): LogTradeInstruction<TProgramAddress, TAccountSigner> {
   // Program address.
-  const programAddress =
-    config?.programAddress ?? LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS;
+  const programAddress = config?.programAddress ?? SL_TRADING_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
@@ -178,7 +177,7 @@ export function getLogTradeInstruction<
 }
 
 export type ParsedLogTradeInstruction<
-  TProgram extends string = typeof LEARN_SOLANA_PROGRAM_PROGRAM_ADDRESS,
+  TProgram extends string = typeof SL_TRADING_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;

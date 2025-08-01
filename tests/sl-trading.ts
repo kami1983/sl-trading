@@ -1,15 +1,15 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { LearnSolanaProgram } from "../target/types/learn_solana_program";
+import { SlTrading } from "../target/types/sl_trading";
 import { PublicKey } from '@solana/web3.js';
 import { assert } from "chai";
 
-describe("learn-solana-program", () => {
+describe("sl-trading", () => {
   // Configure the client to use the local cluster.
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
 
-  const program = anchor.workspace.LearnSolanaProgram as Program<LearnSolanaProgram>;
+  const program = anchor.workspace.SlTrading as Program<SlTrading>;
 
   it("Is initialized!", async () => {
     console.log("Is initialized!", "signer:", provider.wallet.publicKey.toBase58());

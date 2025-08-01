@@ -1,12 +1,12 @@
 [package]
-name = "learn-solana-program"
+name = "sl-trading"
 version = "0.1.0"
 description = "Created with Anchor"
 edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
-name = "learn_solana_program"
+name = "sl_trading"
 
 [features]
 default = []
@@ -19,4 +19,5 @@ idl-build = ["anchor-lang/idl-build"]
 
 [dependencies]
 anchor-lang = "0.31.1"
+solana-security-txt = "1.1.1"
 
