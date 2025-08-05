@@ -5,7 +5,7 @@ import { ExplorerLink } from '@/components/cluster/cluster-ui'
 import { AppHero } from '@/components/app-hero'
 import { ellipsify } from '@/lib/utils'
 
-import { AccountBalance, AccountButtons, AccountTokens, AccountTransactions } from './account-ui'
+import { AccountBalance, AccountButtons, AccountTokens, AccountTransactions, AccountTradeEvents } from './account-ui'
 
 export default function AccountFeatureDetail() {
   const params = useParams()
@@ -35,6 +35,7 @@ export default function AccountFeatureDetail() {
         </div>
       </AppHero>
       <div className="space-y-8">
+        <AccountTradeEvents />
         <AccountTokens address={address} />
         <AccountTransactions address={address} />
       </div>

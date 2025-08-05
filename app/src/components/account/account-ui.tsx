@@ -19,6 +19,7 @@ import {
   useRequestAirdropMutation,
   useTransferSolMutation,
   useLogTradeMutation,
+  useGetTradeEventsQuery,
   type LogTradeData,
   TradeType,
 } from './account-data-access'
@@ -446,5 +447,108 @@ function ModalLogTrade({ address }: { address: Address }) {
         </div>
       </div>
     </AppModal>
+  )
+}
+
+export function AccountTradeEvents() {
+  const query = useGetTradeEventsQuery()
+  const [showAll, setShowAll] = useState(false)
+
+  const items = useMemo(() => {
+    if (showAll) return query.data
+    return query.data?.slice(0, 10)
+  }, [query.data, showAll])
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between">
+        <h2 className="text-2xl font-bold">SL Trading 交易事件</h2>
+        <div className="space-x-2">
+          {query.isLoading ? (
+            <span className="loading loading-spinner"></span>
+          ) : (
+            <Button variant="outline" onClick={() => query.refetch()}>
+              <RefreshCw size={16} />
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {query.isError && <pre className="alert alert-error">Error: {query.error?.message.toString()}</pre>}
+      
+      {query.isSuccess && (
+        <div>
+          {query.data.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>暂无交易事件记录</p>
+              <p className="text-sm mt-2">使用上方的&ldquo;记录交易&rdquo;按钮来创建第一个交易记录</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>交易ID</TableHead>
+                  <TableHead>用户ID</TableHead>
+                  <TableHead>基金ID</TableHead>
+                  <TableHead>类型</TableHead>
+                  <TableHead className="text-right">数量</TableHead>
+                  <TableHead className="text-right">价格</TableHead>
+                  <TableHead className="text-right">时间</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items?.map((event, index) => (
+                  <TableRow key={`${event.id}-${index}`}>
+                    <TableCell className="font-mono">
+                      <span title={event.id}>
+                        {ellipsify(event.id, 12)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      <span title={event.userId}>
+                        {event.userId === 'unknown' ? '-' : ellipsify(event.userId, 8)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="font-mono">
+                      <span title={event.fundId}>
+                        {event.fundId === 'unknown' ? '-' : ellipsify(event.fundId, 8)}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        event.tradeType === TradeType.BUY 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-red-100 text-red-800'
+                      }`}>
+                        {event.tradeType === TradeType.BUY ? '买入' : '卖出'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {event.amount.toString()}
+                    </TableCell>
+                    <TableCell className="text-right font-mono">
+                      {event.price.toString()}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {new Date(Number(event.timestamp) * 1000).toLocaleString('zh-CN')}
+                    </TableCell>
+                  </TableRow>
+                ))}
+
+                {(query.data?.length ?? 0) > 10 && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center">
+                      <Button variant="outline" onClick={() => setShowAll(!showAll)}>
+                        {showAll ? '显示较少' : `显示全部 (${query.data?.length} 条)`}
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      )}
+    </div>
   )
 }

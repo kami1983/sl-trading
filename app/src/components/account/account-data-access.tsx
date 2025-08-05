@@ -17,10 +17,12 @@ import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
 
 
 import { getLogTradeInstruction } from '@/generated/instructions'
-import { TradeType } from '@/generated/types'
+import { TradeType, TradeEvent } from '@/generated/types'
+import { SL_TRADING_PROGRAM_ADDRESS } from '@/generated/programs'
 
 // 重新导出以保持API一致性
 export { TradeType }
+export type { TradeEvent }
 
 // logTrade 参数类型
 export interface LogTradeData {
@@ -152,6 +154,7 @@ export function useLogTradeMutation({ address }: { address: Address }) {
   const { client } = useWalletUi()
   const signer = useWalletUiSigner()
   const invalidateSignaturesQuery = useInvalidateGetSignaturesQuery({ address })
+  const invalidateTradeEventsQuery = useInvalidateGetTradeEventsQuery()
 
   return useMutation({
     mutationFn: async (input: LogTradeData) => {
@@ -159,7 +162,7 @@ export function useLogTradeMutation({ address }: { address: Address }) {
         const { value: latestBlockhash } = await client.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send()
 
         // 直接使用 Codama 生成的指令
-        const timestamp = input.timestamp || BigInt(Date.now())
+        const timestamp = BigInt(Math.floor(Date.now() / 1000)) // 使用当前时间的秒级时间戳
         const instruction = getLogTradeInstruction({
           signer: signer,
           id: input.id,
@@ -191,7 +194,7 @@ export function useLogTradeMutation({ address }: { address: Address }) {
     onSuccess: async (tx) => {
       toastTx(tx)
       toast.success('交易记录已成功提交到链上!')
-      await invalidateSignaturesQuery()
+      await Promise.all([invalidateSignaturesQuery(), invalidateTradeEventsQuery()])
     },
     onError: (error) => {
       toast.error(`交易记录提交失败! ${error}`)
@@ -217,4 +220,126 @@ export function useRequestAirdropMutation({ address }: { address: Address }) {
       await Promise.all([invalidateBalanceQuery(), invalidateSignaturesQuery()])
     },
   })
+}
+
+// ==================== TradeEvent 查询功能 ====================
+
+export function useGetTradeEventsQuery(targetAddress?: Address) {
+  const { client } = useWalletUi()
+
+  return useQuery({
+    queryKey: ['getTradeEvents', SL_TRADING_PROGRAM_ADDRESS, targetAddress],
+    queryFn: async () => {
+      try {
+        let signaturesResponse
+
+        if (targetAddress) {
+          // 查询指定地址的交易签名
+          signaturesResponse = await client.rpc
+            .getSignaturesForAddress(targetAddress, {
+              limit: 100, // 限制获取最近100个交易
+            })
+            .send()
+        } else {
+          // 查询程序的所有签名
+          signaturesResponse = await client.rpc
+            .getSignaturesForAddress(SL_TRADING_PROGRAM_ADDRESS, {
+              limit: 100, // 限制获取最近100个交易
+            })
+            .send()
+        }
+
+        const tradeEvents: TradeEvent[] = []
+
+        // 获取每个交易的详细信息并解析事件
+        for (const sig of signaturesResponse) {
+          try {
+            const transactionResponse = await client.rpc
+              .getTransaction(sig.signature, {
+                encoding: 'jsonParsed',
+                maxSupportedTransactionVersion: 0,
+                commitment: 'confirmed',
+              })
+              .send()
+
+            if (transactionResponse?.meta?.logMessages) {
+              // 如果查询指定地址，需要检查交易是否涉及 SL_TRADING_PROGRAM
+              if (targetAddress) {
+                const isSlTradingTransaction = transactionResponse.meta.logMessages.some(log => 
+                  log.includes(`Program ${SL_TRADING_PROGRAM_ADDRESS} invoke`) ||
+                  log.includes('Trade event emitted')
+                )
+                if (!isSlTradingTransaction) {
+                  continue // 跳过不相关的交易
+                }
+              }
+
+              // 解析交易日志中的 TradeEvent
+              const events = parseTradeEventsFromLogs(
+                transactionResponse.meta.logMessages,
+                transactionResponse.blockTime ? Number(transactionResponse.blockTime) : undefined
+              )
+              tradeEvents.push(...events)
+            }
+          } catch (error) {
+            console.warn('Failed to fetch transaction:', sig.signature, error)
+          }
+        }
+
+        // 按时间戳降序排序
+        return tradeEvents.sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+      } catch (error) {
+        console.error('Error fetching trade events:', error)
+        throw error
+      }
+    },
+    staleTime: 30_000, // 30秒缓存
+    refetchInterval: 60_000, // 每分钟自动刷新
+  })
+}
+
+// 解析交易日志中的 TradeEvent 数据
+function parseTradeEventsFromLogs(logs: readonly string[], blockTime?: number): TradeEvent[] {
+  const events: TradeEvent[] = []
+
+  for (const log of logs) {
+    try {
+      // 查找包含交易事件信息的日志
+      if (log.includes('Trade event emitted')) {
+        // 解析格式: "Trade event emitted - ID: xxx, Type: xxx, Amount: xxx, Price: xxx"
+        const idMatch = log.match(/ID: ([^,]+)/)
+        const typeMatch = log.match(/Type: (BUY|SELL)/)
+        const amountMatch = log.match(/Amount: (\d+)/)
+        const priceMatch = log.match(/Price: (\d+)/)
+
+        if (idMatch && typeMatch && amountMatch && priceMatch) {
+          // 注意：从日志中我们只能获取部分信息
+          // 完整的 TradeEvent 需要包含更多字段，这里我们先用可获取的信息
+          const tradeTypeValue = typeMatch[1] === 'BUY' ? TradeType.BUY : TradeType.SELL
+          const event: TradeEvent = {
+            id: idMatch[1].trim(),
+            userId: 'unknown', // 日志中未包含，需要从程序数据解析
+            fundId: 'unknown', // 日志中未包含，需要从程序数据解析
+            tradeType: tradeTypeValue,
+            amount: BigInt(amountMatch[1]),
+            price: BigInt(priceMatch[1]),
+            timestamp: BigInt(blockTime || Math.floor(Date.now() / 1000)), // 使用区块时间（秒级），如果没有则使用当前时间的秒级时间戳
+          }
+          events.push(event)
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to parse log:', log, error)
+    }
+  }
+
+  return events
+}
+
+export function useInvalidateGetTradeEventsQuery() {
+  const queryClient = useQueryClient()
+  return () =>
+    queryClient.invalidateQueries({
+      queryKey: ['getTradeEvents'],
+    })
 }
