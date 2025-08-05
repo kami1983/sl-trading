@@ -161,8 +161,9 @@ export function useLogTradeMutation({ address }: { address: Address }) {
       try {
         const { value: latestBlockhash } = await client.rpc.getLatestBlockhash({ commitment: 'confirmed' }).send()
 
-        // 直接使用 Codama 生成的指令
+        // 直接使用 Codama 生成的指令  
         const timestamp = BigInt(Math.floor(Date.now() / 1000)) // 使用当前时间的秒级时间戳
+        console.log('Submitting trade with timestamp:', timestamp, 'Current time:', new Date())
         const instruction = getLogTradeInstruction({
           signer: signer,
           id: input.id,
@@ -387,9 +388,40 @@ function parseAnchorEventsFromLogs(logs: readonly string[], blockTime?: number):
             const decoder = getTradeEventDecoder()
             const decodedEvent = decoder.decode(eventData.subarray(8))
             
+            // 调试：打印原始时间戳
+            console.log('Decoded event timestamp:', decodedEvent.timestamp, typeof decodedEvent.timestamp)
+            console.log('Block time:', blockTime)
+            
+            // 处理时间戳：确保使用正确的时间
+            let finalTimestamp: bigint
+            
+            if (decodedEvent.timestamp && decodedEvent.timestamp > 0) {
+              const timestampNumber = Number(decodedEvent.timestamp)
+              // 获取当前时间戳（秒级）用于对比
+              const currentTime = Math.floor(Date.now() / 1000)
+              
+              // 如果时间戳是毫秒级（13位数字）或者远超当前时间，说明是错误的毫秒级时间戳
+              if (timestampNumber > 1700000000000 || timestampNumber > currentTime + 24 * 3600) {
+                // 对于错误的历史数据（毫秒值被当作秒值保存），优先使用区块时间
+                console.log('Detected invalid timestamp, using block time instead')
+                finalTimestamp = BigInt(blockTime || currentTime)
+              } else if (timestampNumber > 1600000000) {
+                // 合理的秒级时间戳（2020年之后），直接使用
+                finalTimestamp = decodedEvent.timestamp
+              } else {
+                // 时间戳异常，使用区块时间
+                finalTimestamp = BigInt(blockTime || currentTime)
+              }
+            } else {
+              // 没有时间戳，使用区块时间
+              finalTimestamp = BigInt(blockTime || Math.floor(Date.now() / 1000))
+            }
+            
+            console.log('Final timestamp:', finalTimestamp)
+            
             events.push({
               ...decodedEvent,
-              timestamp: decodedEvent.timestamp || BigInt(blockTime || Math.floor(Date.now() / 1000))
+              timestamp: finalTimestamp
             })
           }
         }

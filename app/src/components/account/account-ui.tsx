@@ -530,7 +530,12 @@ export function AccountTradeEvents() {
                       {event.price.toString()}
                     </TableCell>
                     <TableCell className="text-right text-sm">
-                      {new Date(Number(event.timestamp) * 1000).toLocaleString('zh-CN')}
+                      {(() => {
+                        const timestamp = Number(event.timestamp)
+                        const date = new Date(timestamp * 1000)
+                        console.log('Displaying timestamp:', timestamp, 'as date:', date, 'formatted:', date.toLocaleString('zh-CN'))
+                        return date.toLocaleString('zh-CN')
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))}
