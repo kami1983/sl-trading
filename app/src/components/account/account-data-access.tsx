@@ -17,7 +17,7 @@ import { useWalletUiSigner } from '@/components/solana/use-wallet-ui-signer'
 
 
 import { getLogTradeInstruction } from '@/generated/instructions'
-import { TradeType, TradeEvent } from '@/generated/types'
+import { TradeType, TradeEvent, getTradeEventDecoder } from '@/generated/types'
 import { SL_TRADING_PROGRAM_ADDRESS } from '@/generated/programs'
 
 // 重新导出以保持API一致性
@@ -274,9 +274,9 @@ export function useGetTradeEventsQuery(targetAddress?: Address) {
                 }
               }
 
-              // 解析交易日志中的 TradeEvent
-              const events = parseTradeEventsFromLogs(
-                transactionResponse.meta.logMessages,
+              // 解析交易中的 Anchor 事件
+              const events = parseTradeEventsFromTransaction(
+                transactionResponse,
                 transactionResponse.blockTime ? Number(transactionResponse.blockTime) : undefined
               )
               tradeEvents.push(...events)
@@ -333,6 +333,72 @@ function parseTradeEventsFromLogs(logs: readonly string[], blockTime?: number): 
     }
   }
 
+  return events
+}
+
+// 解析交易中的事件数据
+function parseTradeEventsFromTransaction(transactionResponse: any, blockTime?: number): TradeEvent[] {
+  const events: TradeEvent[] = []
+
+  try {
+    if (transactionResponse?.meta?.logMessages) {
+      // 尝试从日志中解析 Anchor 事件数据
+      const anchorEvents = parseAnchorEventsFromLogs(transactionResponse.meta.logMessages, blockTime)
+      events.push(...anchorEvents)
+      
+      // 如果没有找到 Anchor 事件，回退到日志解析（保留兼容性）
+      if (events.length === 0) {
+        const logEvents = parseTradeEventsFromLogs(transactionResponse.meta.logMessages, blockTime)
+        events.push(...logEvents)
+      }
+    }
+  } catch (error) {
+    console.warn('Failed to parse trade events from transaction:', error)
+    // 发生错误时，尝试使用日志解析作为备用
+    try {
+      if (transactionResponse?.meta?.logMessages) {
+        const logEvents = parseTradeEventsFromLogs(transactionResponse.meta.logMessages, blockTime)
+        events.push(...logEvents)
+      }
+    } catch (fallbackError) {
+      console.warn('Fallback log parsing also failed:', fallbackError)
+    }
+  }
+
+  return events
+}
+
+// 解析 Anchor 事件的新函数
+function parseAnchorEventsFromLogs(logs: readonly string[], blockTime?: number): TradeEvent[] {
+  const events: TradeEvent[] = []
+  const eventDiscriminator = Buffer.from([189, 219, 127, 211, 78, 230, 97, 238]) // TradeEvent discriminator
+  
+  for (const log of logs) {
+    try {
+      // 查找包含 base64 编码事件数据的日志
+      if (log.includes('Program data:')) {
+        const match = log.match(/Program data: (.+)/)
+        if (match) {
+          const eventData = Buffer.from(match[1], 'base64')
+          
+          // 检查事件判别器
+          if (eventData.length >= 8 && eventData.subarray(0, 8).equals(eventDiscriminator)) {
+            // 使用生成的解码器解析事件数据
+            const decoder = getTradeEventDecoder()
+            const decodedEvent = decoder.decode(eventData.subarray(8))
+            
+            events.push({
+              ...decodedEvent,
+              timestamp: decodedEvent.timestamp || BigInt(blockTime || Math.floor(Date.now() / 1000))
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to parse anchor event from log:', log, error)
+    }
+  }
+  
   return events
 }
 
