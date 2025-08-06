@@ -126,9 +126,12 @@ class SimpleMonitor {
     }, CONFIG.MONITOR_INTERVAL)
 
     // 处理优雅关闭
-    process.on('SIGINT', () => {
+    process.on('SIGINT', async () => {
       console.log('\n🛑 收到关闭信号，正在停止监控器...')
       this.stop()
+      console.log('💾 正在保存最终缓存...')
+      await this.saveCache()
+      console.log('✅ 缓存已保存，安全退出')
       process.exit(0)
     })
   }
@@ -278,6 +281,9 @@ class SimpleMonitor {
 
   private async saveCache(): Promise<void> {
     try {
+      console.log(`💾 开始保存缓存到: ${CONFIG.CACHE_FILE}`)
+      console.log(`📊 缓存数据统计: ${this.cache.events.length} 个事件, 总数: ${this.cache.totalEvents}`)
+      
       const data = JSON.stringify(this.cache, (key, value) => {
         // 序列化 BigInt 类型
         if (typeof value === 'bigint') {
@@ -285,7 +291,10 @@ class SimpleMonitor {
         }
         return value
       }, 2)
+      
+      console.log(`📝 数据大小: ${data.length} 字符`)
       await fs.writeFile(CONFIG.CACHE_FILE, data)
+      console.log(`✅ 缓存保存成功`)
     } catch (error) {
       console.error('❌ 保存缓存失败:', error)
     }
