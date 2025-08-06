@@ -5,6 +5,9 @@ target
 node_modules
 test-ledger
 .yarn
+# 排除根目录的JSON文件，但保留app目录下的重要JSON文件
 *.json
+!app/package.json
+!app/tsconfig.json
 *.key.*
 app/dist
