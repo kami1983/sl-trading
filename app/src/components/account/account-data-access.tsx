@@ -225,7 +225,10 @@ export function useRequestAirdropMutation({ address }: { address: Address }) {
 
 // ==================== TradeEvent 查询功能 ====================
 
-export function useGetTradeEventsQuery(targetAddress?: Address, limit: number = 20) {
+export function useGetTradeEventsQuery(
+  targetAddress?: Address, 
+  limit: number = 20
+) {
   const { client } = useWalletUi()
 
   return useQuery({
@@ -311,6 +314,99 @@ export function useGetTradeEventsQuery(targetAddress?: Address, limit: number = 
     // 启用后台更新，提升用户体验
     refetchOnWindowFocus: false,
     retry: 2, // 失败时重试2次
+  })
+}
+
+// 游标分页查询函数
+export function useGetTradeEventsWithCursor(
+  targetAddress?: Address, 
+  limit: number = 20,
+  before?: string
+) {
+  const { client } = useWalletUi()
+
+  return useQuery({
+    queryKey: ['getTradeEventsWithCursor', SL_TRADING_PROGRAM_ADDRESS, targetAddress, limit, before],
+    queryFn: async () => {
+      try {
+        // 获取交易签名（带游标支持）
+        const queryConfig: any = {
+          limit: Math.min(limit, 50),
+        }
+        if (before) {
+          queryConfig.before = before
+        }
+        
+        const signaturesResponse = await client.rpc
+          .getSignaturesForAddress(
+            targetAddress || SL_TRADING_PROGRAM_ADDRESS, 
+            queryConfig
+          )
+          .send()
+
+        const tradeEvents: Array<TradeEvent & { signature: string }> = []
+
+        // 批量处理交易
+        const batchSize = 10
+        for (let i = 0; i < signaturesResponse.length; i += batchSize) {
+          const batch = signaturesResponse.slice(i, i + batchSize)
+          
+          const batchPromises = batch.map(async (sig) => {
+            try {
+              const transactionResponse = await client.rpc
+                .getTransaction(sig.signature, {
+                  encoding: 'jsonParsed',
+                  maxSupportedTransactionVersion: 0,
+                  commitment: 'confirmed',
+                })
+                .send()
+
+              if (transactionResponse?.meta?.logMessages) {
+                // 检查是否为SL Trading交易
+                if (targetAddress) {
+                  const isSlTradingTransaction = transactionResponse.meta.logMessages.some(log => 
+                    log.includes(`Program ${SL_TRADING_PROGRAM_ADDRESS} invoke`) ||
+                    log.includes('Trade event emitted')
+                  )
+                  if (!isSlTradingTransaction) {
+                    return []
+                  }
+                }
+
+                // 解析事件
+                const events = parseTradeEventsFromTransaction(
+                  transactionResponse,
+                  transactionResponse.blockTime ? Number(transactionResponse.blockTime) : undefined
+                )
+                
+                // 为每个事件添加签名信息
+                return events.map(event => ({
+                  ...event,
+                  signature: sig.signature
+                }))
+              }
+              return []
+            } catch (error) {
+              console.warn('Failed to fetch transaction:', sig.signature, error)
+              return []
+            }
+          })
+          
+          const batchResults = await Promise.all(batchPromises)
+          batchResults.forEach(events => tradeEvents.push(...events))
+        }
+
+        // 按时间戳降序排序
+        return tradeEvents.sort((a, b) => Number(b.timestamp) - Number(a.timestamp))
+      } catch (error) {
+        console.error('Error fetching trade events with cursor:', error)
+        throw error
+      }
+    },
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: false,
+    retry: 2,
   })
 }
 

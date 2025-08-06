@@ -1,6 +1,7 @@
 import { RefreshCw } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useMemo, useState } from 'react'
+import { useCursorPagination } from './use-cursor-pagination'
 import { ExplorerLink } from '@/components/cluster/cluster-ui'
 import { ellipsify } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -451,42 +452,88 @@ function ModalLogTrade({ address }: { address: Address }) {
 }
 
 export function AccountTradeEvents() {
-  const [limit, setLimit] = useState(20) // 默认加载20个事件
-  const query = useGetTradeEventsQuery(undefined, limit)
+  const pagination = useCursorPagination(undefined, 20)
   const [showAll, setShowAll] = useState(false)
 
   const items = useMemo(() => {
-    if (showAll) return query.data
-    return query.data?.slice(0, 10)
-  }, [query.data, showAll])
-
-  const loadMore = () => {
-    setLimit(prev => prev + 20) // 每次加载更多20个
-  }
+    if (showAll) return pagination.data
+    return pagination.data?.slice(0, 10)
+  }, [pagination.data, showAll])
 
   return (
     <div className="space-y-2">
-      <div className="flex justify-between">
-        <h2 className="text-2xl font-bold">SL Trading 交易事件</h2>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold">SL Trading 交易事件</h2>
+          {pagination.data && (
+            <p className="text-sm text-gray-500 mt-1">
+              第 {pagination.pageInfo.currentPage} 页 · {pagination.data.length} 条记录
+              {pagination.pageInfo.hasNext && ` · 还有更多数据`}
+              {pagination.pageInfo.hasPrev && ` · 可返回上页`}
+            </p>
+          )}
+          
+          {/* 调试信息 */}
+          <div className="text-xs text-gray-400 mt-1">
+            <span>分页状态: </span>
+            <span>hasNext: {pagination.pageInfo.hasNext ? '是' : '否'} | </span>
+            <span>hasPrev: {pagination.pageInfo.hasPrev ? '是' : '否'} | </span>
+            <span>loading: {pagination.isLoading ? '是' : '否'} | </span>
+            <span>page: {pagination.pageInfo.currentPage}</span>
+          </div>
+        </div>
         <div className="space-x-2">
-          {query.isLoading ? (
+          {pagination.isLoading ? (
             <span className="loading loading-spinner"></span>
           ) : (
-            <Button variant="outline" onClick={() => query.refetch()}>
+            <Button variant="outline" onClick={() => pagination.refetch()}>
               <RefreshCw size={16} />
             </Button>
           )}
         </div>
       </div>
 
-      {query.isError && <pre className="alert alert-error">Error: {query.error?.message.toString()}</pre>}
+      {pagination.error && <pre className="alert alert-error">Error: {pagination.error?.message.toString()}</pre>}
       
-      {query.isSuccess && (
+      {pagination.data && (
         <div>
-          {query.data.length === 0 ? (
+          {pagination.data.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <p>暂无交易事件记录</p>
               <p className="text-sm mt-2">使用上方的&ldquo;记录交易&rdquo;按钮来创建第一个交易记录</p>
+              
+              {/* 即使没有数据也显示分页控制 */}
+              {(pagination.pageInfo.hasPrev || pagination.pageInfo.hasNext) && (
+                <div className="flex justify-center space-x-2 mt-4">
+                  <Button 
+                    variant="outline" 
+                    onClick={pagination.goToFirstPage}
+                    disabled={!pagination.pageInfo.hasPrev || pagination.isLoading}
+                    size="sm"
+                  >
+                    首页
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={pagination.prevPage}
+                    disabled={!pagination.pageInfo.hasPrev || pagination.isLoading}
+                    size="sm"
+                  >
+                    上一页
+                  </Button>
+                  <span className="flex items-center px-3 text-sm text-gray-600">
+                    第 {pagination.pageInfo.currentPage} 页
+                  </span>
+                  <Button 
+                    variant="outline" 
+                    onClick={pagination.nextPage}
+                    disabled={!pagination.pageInfo.hasNext || pagination.isLoading}
+                    size="sm"
+                  >
+                    {pagination.isLoading ? '加载中...' : '下一页'}
+                  </Button>
+                </div>
+              )}
             </div>
           ) : (
             <Table>
@@ -545,24 +592,51 @@ export function AccountTradeEvents() {
                   </TableRow>
                 ))}
 
-                {(query.data?.length ?? 0) > 10 && (
+                {/* 显示控制按钮 */}
+                {(pagination.data?.length ?? 0) > 10 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center space-x-2">
+                    <TableCell colSpan={7} className="text-center">
                       <Button variant="outline" onClick={() => setShowAll(!showAll)}>
-                        {showAll ? '显示较少' : `显示全部 (${query.data?.length} 条)`}
+                        {showAll ? '显示较少' : `显示全部 (${pagination.data?.length} 条)`}
                       </Button>
-                      {query.data && query.data.length >= limit && (
-                        <Button 
-                          variant="outline" 
-                          onClick={loadMore}
-                          disabled={query.isLoading}
-                        >
-                          {query.isLoading ? '加载中...' : '加载更多'}
-                        </Button>
-                      )}
                     </TableCell>
                   </TableRow>
                 )}
+
+                {/* 分页控制按钮 */}
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">
+                    <div className="flex justify-center space-x-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={pagination.goToFirstPage}
+                        disabled={!pagination.pageInfo.hasPrev || pagination.isLoading}
+                        size="sm"
+                      >
+                        首页
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={pagination.prevPage}
+                        disabled={!pagination.pageInfo.hasPrev || pagination.isLoading}
+                        size="sm"
+                      >
+                        上一页
+                      </Button>
+                      <span className="flex items-center px-3 text-sm text-gray-600">
+                        第 {pagination.pageInfo.currentPage} 页
+                      </span>
+                      <Button 
+                        variant="outline" 
+                        onClick={pagination.nextPage}
+                        disabled={!pagination.pageInfo.hasNext || pagination.isLoading}
+                        size="sm"
+                      >
+                        {pagination.isLoading ? '加载中...' : '下一页'}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
           )}
