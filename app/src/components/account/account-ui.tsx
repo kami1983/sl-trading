@@ -451,13 +451,18 @@ function ModalLogTrade({ address }: { address: Address }) {
 }
 
 export function AccountTradeEvents() {
-  const query = useGetTradeEventsQuery()
+  const [limit, setLimit] = useState(20) // 默认加载20个事件
+  const query = useGetTradeEventsQuery(undefined, limit)
   const [showAll, setShowAll] = useState(false)
 
   const items = useMemo(() => {
     if (showAll) return query.data
     return query.data?.slice(0, 10)
   }, [query.data, showAll])
+
+  const loadMore = () => {
+    setLimit(prev => prev + 20) // 每次加载更多20个
+  }
 
   return (
     <div className="space-y-2">
@@ -542,10 +547,19 @@ export function AccountTradeEvents() {
 
                 {(query.data?.length ?? 0) > 10 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center">
+                    <TableCell colSpan={7} className="text-center space-x-2">
                       <Button variant="outline" onClick={() => setShowAll(!showAll)}>
                         {showAll ? '显示较少' : `显示全部 (${query.data?.length} 条)`}
                       </Button>
+                      {query.data && query.data.length >= limit && (
+                        <Button 
+                          variant="outline" 
+                          onClick={loadMore}
+                          disabled={query.isLoading}
+                        >
+                          {query.isLoading ? '加载中...' : '加载更多'}
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 )}
