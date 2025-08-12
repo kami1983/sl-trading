@@ -9,5 +9,7 @@ test-ledger
 *.json
 !app/package.json
 !app/tsconfig.json
+!node-monitor/*.json
 *.key.*
 app/dist
+node-monitor/dist
