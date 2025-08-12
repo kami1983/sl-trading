@@ -6,6 +6,7 @@ import {
 } from '../generated/types';
 import { SL_TRADING_PROGRAM_ADDRESS } from '../generated/programs/slTrading';
 import { createHash } from 'crypto';
+import { EventRegistryService } from './event-registry.service';
 
 function anchorEventDiscriminator(eventName: string): Buffer {
   return createHash('sha256').update(`event:${eventName}`).digest().subarray(0, 8);
@@ -25,143 +26,111 @@ export class EventParserService {
   private readonly programAddress: PublicKey;
   private readonly tradeEventDiscriminator: Buffer;
 
-  constructor() {
+  constructor(private readonly registry: EventRegistryService) {
     const rpcUrl = process.env.RPC_URL || 'https://api.devnet.solana.com';
-    // 优先环境变量，其次使用生成代码的常量
     const program = process.env.PROGRAM_ADDRESS || SL_TRADING_PROGRAM_ADDRESS;
     this.connection = new Connection(rpcUrl, 'confirmed');
     this.programAddress = new PublicKey(program);
-    // 运行时计算 TradeEvent 的 discriminator，避免硬编码
     this.tradeEventDiscriminator = anchorEventDiscriminator('TradeEvent');
   }
 
-  /**
-   * 从交易响应中解析 TradeEvent 数据
-   */
   async parseTradeEventsFromTransaction(
     transactionResponse: TransactionResponse,
     signature: string,
     blockTime?: number
   ): Promise<ParsedTradeEvent[]> {
-    const events: ParsedTradeEvent[] = [];
+    const parsed: ParsedTradeEvent[] = [];
 
     try {
-      if (!transactionResponse?.meta?.logMessages) {
+      const logs = transactionResponse?.meta?.logMessages as unknown as string[] | undefined;
+      if (!logs?.length) {
         this.logger.debug('交易无日志消息');
-        return events;
+        return parsed;
       }
 
-      const logMessages = transactionResponse.meta.logMessages as unknown as string[];
-      this.logger.debug(`解析交易日志，共 ${logMessages.length} 条日志`);
+      this.logger.debug(`解析交易日志，共 ${logs.length} 条日志`);
 
-      // 检查是否是 SL Trading 相关的交易（保持启发式，若需更严谨可结合指令表校验）
-      const isSlTradingTransaction = this.isSlTradingTransaction(logMessages);
-      if (!isSlTradingTransaction) {
+      if (!this.isSlTradingTransaction(logs)) {
         this.logger.debug('非SL Trading交易，跳过');
-        return events;
+        return parsed;
       }
 
-      this.logger.debug('确认为SL Trading交易，开始解析事件');
+      const events = this.parseAnchorEventsFromLogs(logs, signature, transactionResponse.slot, blockTime);
+      parsed.push(...events);
 
-      // 解析 Anchor 事件数据
-      const anchorEvents = this.parseAnchorEventsFromLogs(
-        logMessages, 
-        signature, 
-        transactionResponse.slot,
-        blockTime
-      );
-      events.push(...anchorEvents);
-
-      this.logger.debug(`解析结果: ${events.length} 个事件`);
-
+      this.logger.debug(`解析结果: ${parsed.length} 个事件`);
     } catch (error) {
       this.logger.error('解析交易事件失败:', error as any);
     }
 
-    return events;
+    return parsed;
   }
 
-  /**
-   * 检查是否是 SL Trading 相关的交易
-   */
   private isSlTradingTransaction(logMessages: string[]): boolean {
-    return logMessages.some(log => 
+    return logMessages.some((log) =>
       log.includes(`Program ${this.programAddress.toString()} invoke`) ||
-      log.startsWith('Program data: ')
+      log.startsWith('Program data: '),
     );
   }
 
-  /**
-   * 从日志中解析 Anchor 事件（仅依赖 Program data + 生成的解码器）
-   */
   private parseAnchorEventsFromLogs(
-    logs: string[], 
+    logs: string[],
     signature: string,
     slot: number,
-    blockTime?: number
+    blockTime?: number,
   ): ParsedTradeEvent[] {
-    const events: ParsedTradeEvent[] = [];
-    const decoder = getTradeEventDecoder();
+    const out: ParsedTradeEvent[] = [];
 
     for (const log of logs) {
       if (!log.startsWith('Program data: ')) continue;
-
       try {
         const dataBase64 = log.substring('Program data: '.length);
         const data = Buffer.from(dataBase64, 'base64');
         if (data.length < 8) continue;
 
-        // 校验 discriminator，再解码，这样可以确保事件类型正确
-        const eventDiscriminator = data.subarray(0, 8);
-        if (!eventDiscriminator.equals(this.tradeEventDiscriminator)) {
-          continue;
+        const disc = data.subarray(0, 8);
+        const discHex = Buffer.from(disc).toString('hex');
+        const reg = this.registry.get(discHex);
+        if (!reg) continue; // 未注册的事件，忽略
+
+        const decoded: any = reg.decode(data.subarray(8));
+
+        // 仅当是 TradeEvent 时提升为强类型，其他事件可按需扩展
+        if (disc.equals(this.tradeEventDiscriminator)) {
+          const finalTimestamp: bigint = BigInt(blockTime ?? Math.floor(Date.now() / 1000));
+          const event: ParsedTradeEvent = {
+            ...(decoded as TradeEvent),
+            timestamp: finalTimestamp,
+            signature,
+            blockTime: blockTime || Math.floor(Date.now() / 1000),
+            slot,
+            parsedAt: Date.now(),
+          };
+          this.logger.debug('解析成功:', {
+            id: event.id,
+            userId: event.userId,
+            fundId: event.fundId,
+            tradeType: event.tradeType,
+            amount: event.amount.toString(),
+            price: event.price.toString(),
+          } as any);
+          out.push(event);
+        } else {
+          // 其他事件：目前仅记录存在，后续可扩展存储/映射
+          this.logger.debug(`解析到其他事件: ${reg.name}`);
         }
-
-        const decodedEvent = decoder.decode(data.subarray(8));
-
-        const finalTimestamp: bigint = BigInt(
-          blockTime ?? Math.floor(Date.now() / 1000),
-        );
-
-        const event: ParsedTradeEvent = {
-          ...decodedEvent,
-          timestamp: finalTimestamp,
-          signature,
-          blockTime: blockTime || Math.floor(Date.now() / 1000),
-          slot,
-          parsedAt: Date.now(),
-        };
-
-        this.logger.debug('解析成功:', {
-          id: event.id,
-          userId: event.userId,
-          fundId: event.fundId,
-          tradeType: event.tradeType,
-          amount: event.amount.toString(),
-          price: event.price.toString(),
-        } as any);
-
-        events.push(event);
-      } catch (error) {
-        // 解码失败直接忽略该条日志
+      } catch {
         this.logger.warn('Program data 解码失败，已跳过该日志');
-        continue;
       }
     }
 
-    return events;
+    return out;
   }
 
-  /**
-   * 获取程序地址
-   */
   getProgramAddress(): PublicKey {
     return this.programAddress;
   }
 
-  /**
-   * 获取连接
-   */
   getConnection(): Connection {
     return this.connection;
   }
