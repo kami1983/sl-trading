@@ -2,10 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Connection, PublicKey, TransactionResponse } from '@solana/web3.js';
 import { 
   TradeEvent, 
-  TradeType, 
   getTradeEventDecoder 
 } from '../generated/types';
 import { SL_TRADING_PROGRAM_ADDRESS } from '../generated/programs/slTrading';
+import { createHash } from 'crypto';
+
+function anchorEventDiscriminator(eventName: string): Buffer {
+  return createHash('sha256').update(`event:${eventName}`).digest().subarray(0, 8);
+}
 
 export interface ParsedTradeEvent extends TradeEvent {
   signature: string;
@@ -19,11 +23,7 @@ export class EventParserService {
   private readonly logger = new Logger(EventParserService.name);
   private readonly connection: Connection;
   private readonly programAddress: PublicKey;
-  
-  // TradeEvent 的 discriminator (前8字节)
-  private static readonly TRADE_EVENT_DISCRIMINATOR = Buffer.from([
-    189, 219, 127, 211, 78, 230, 97, 238
-  ]);
+  private readonly tradeEventDiscriminator: Buffer;
 
   constructor() {
     const rpcUrl = process.env.RPC_URL || 'https://api.devnet.solana.com';
@@ -31,6 +31,8 @@ export class EventParserService {
     const program = process.env.PROGRAM_ADDRESS || SL_TRADING_PROGRAM_ADDRESS;
     this.connection = new Connection(rpcUrl, 'confirmed');
     this.programAddress = new PublicKey(program);
+    // 运行时计算 TradeEvent 的 discriminator，避免硬编码
+    this.tradeEventDiscriminator = anchorEventDiscriminator('TradeEvent');
   }
 
   /**
@@ -109,9 +111,9 @@ export class EventParserService {
         const data = Buffer.from(dataBase64, 'base64');
         if (data.length < 8) continue;
 
-        // 可选：先校验 discriminator，再解码
-        const eventDiscriminator = data.slice(0, 8);
-        if (!eventDiscriminator.equals(EventParserService.TRADE_EVENT_DISCRIMINATOR)) {
+        // 校验 discriminator，再解码，这样可以确保事件类型正确
+        const eventDiscriminator = data.subarray(0, 8);
+        if (!eventDiscriminator.equals(this.tradeEventDiscriminator)) {
           continue;
         }
 
@@ -141,7 +143,7 @@ export class EventParserService {
 
         events.push(event);
       } catch (error) {
-        // 解码失败直接忽略该条日志（不做文案兜底，不写入占位事件）
+        // 解码失败直接忽略该条日志
         this.logger.warn('Program data 解码失败，已跳过该日志');
         continue;
       }
