@@ -13,11 +13,6 @@ export interface ParsedTradeEvent extends TradeEvent {
   parsedAt: number;
 }
 
-export interface EventParserConfig {
-  programAddress: string;
-  rpcUrl: string;
-}
-
 @Injectable()
 export class EventParserService {
   private readonly logger = new Logger(EventParserService.name);
@@ -29,9 +24,11 @@ export class EventParserService {
     189, 219, 127, 211, 78, 230, 97, 238
   ]);
 
-  constructor(private readonly config: EventParserConfig) {
-    this.connection = new Connection(config.rpcUrl, 'confirmed');
-    this.programAddress = new PublicKey(config.programAddress);
+  constructor() {
+    const rpcUrl = process.env.RPC_URL || 'https://api.devnet.solana.com';
+    const program = process.env.PROGRAM_ADDRESS || 'EAJ7QiDXgXH31m57RhDFMHTkBrDzxrFpcN8xUkPUqHLi';
+    this.connection = new Connection(rpcUrl, 'confirmed');
+    this.programAddress = new PublicKey(program);
   }
 
   /**
@@ -50,7 +47,7 @@ export class EventParserService {
         return events;
       }
 
-      const logMessages = transactionResponse.meta.logMessages;
+      const logMessages = transactionResponse.meta.logMessages as unknown as string[];
       this.logger.debug(`解析交易日志，共 ${logMessages.length} 条日志`);
 
       // 检查是否是 SL Trading 相关的交易
@@ -74,7 +71,7 @@ export class EventParserService {
       this.logger.debug(`解析结果: ${events.length} 个事件`);
 
     } catch (error) {
-      this.logger.error('解析交易事件失败:', error);
+      this.logger.error('解析交易事件失败:', error as any);
     }
 
     return events;
@@ -125,12 +122,9 @@ export class EventParserService {
               const decodedEvent = decoder.decode(data.subarray(8));
 
               // 处理时间戳：使用区块时间而不是事件中的时间戳
-              let finalTimestamp: bigint;
-              if (blockTime) {
-                finalTimestamp = BigInt(blockTime);
-              } else {
-                finalTimestamp = BigInt(Math.floor(Date.now() / 1000));
-              }
+              const finalTimestamp: bigint = BigInt(
+                blockTime ?? Math.floor(Date.now() / 1000),
+              );
 
               const event: ParsedTradeEvent = {
                 ...decodedEvent,
@@ -148,12 +142,12 @@ export class EventParserService {
                 tradeType: event.tradeType,
                 amount: event.amount.toString(),
                 price: event.price.toString()
-              });
+              } as any);
 
               events.push(event);
 
             } catch (parseError) {
-              this.logger.warn('生成解码器解析失败:', parseError);
+              this.logger.warn('生成解码器解析失败:', parseError as any);
               
               // 回退到基本事件
               const event: ParsedTradeEvent = {
@@ -174,7 +168,7 @@ export class EventParserService {
           }
         }
       } catch (error) {
-        this.logger.warn('解析事件时出错:', error);
+        this.logger.warn('解析事件时出错:', error as any);
       }
     }
 
@@ -205,7 +199,7 @@ export class EventParserService {
               parsedAt: Date.now()
             };
 
-            this.logger.debug('解析到真实交易数据:', event);
+            this.logger.debug('解析到真实交易数据:', event as any);
             events.push(event);
           } else {
             this.logger.debug('无法解析日志格式');

@@ -8,9 +8,7 @@
     "format:check": "prettier --check .",
     "lint": "next lint",
     "start": "next start",
-    "generate-clients": "npx ts-node scripts/generate-clients.ts",
-    "monitor": "npx ts-node scripts/simple-monitor.ts",
-    "monitor:dev": "npx ts-node --watch scripts/simple-monitor.ts"
+    "generate-clients": "npx ts-node scripts/generate-clients.ts"
   },
   "description": "Next.js, Tailwind, gill (based on @solana/kit), Wallet UI",
   "keywords": [
