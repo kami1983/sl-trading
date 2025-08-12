@@ -5,6 +5,7 @@ import {
   TradeType, 
   getTradeEventDecoder 
 } from '../generated/types';
+import { SL_TRADING_PROGRAM_ADDRESS } from '../generated/programs/slTrading';
 
 export interface ParsedTradeEvent extends TradeEvent {
   signature: string;
@@ -26,7 +27,8 @@ export class EventParserService {
 
   constructor() {
     const rpcUrl = process.env.RPC_URL || 'https://api.devnet.solana.com';
-    const program = process.env.PROGRAM_ADDRESS || 'EAJ7QiDXgXH31m57RhDFMHTkBrDzxrFpcN8xUkPUqHLi';
+    // 优先环境变量，其次使用生成代码的常量
+    const program = process.env.PROGRAM_ADDRESS || SL_TRADING_PROGRAM_ADDRESS;
     this.connection = new Connection(rpcUrl, 'confirmed');
     this.programAddress = new PublicKey(program);
   }

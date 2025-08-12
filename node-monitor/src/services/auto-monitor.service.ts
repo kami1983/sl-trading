@@ -11,8 +11,7 @@ export class AutoMonitorService implements OnModuleInit, OnModuleDestroy {
   private connection: Connection;
   private program: PublicKey;
 
-  private readonly rpcUrl = process.env.RPC_URL || 'https://api.devnet.solana.com';
-  private readonly programAddress = process.env.PROGRAM_ADDRESS || 'EAJ7QiDXgXH31m57RhDFMHTkBrDzxrFpcN8xUkPUqHLi';
+  // 仅保留抓取控制参数
   private readonly intervalMs = parseInt(process.env.MONITOR_INTERVAL_SECONDS || '60') * 1000;
   private readonly batchSize = parseInt(process.env.BATCH_SIZE || '50');
 
@@ -20,8 +19,9 @@ export class AutoMonitorService implements OnModuleInit, OnModuleDestroy {
     private readonly parser: EventParserService,
     private readonly cache: CacheService,
   ) {
-    this.connection = new Connection(this.rpcUrl, 'confirmed');
-    this.program = new PublicKey(this.programAddress);
+    // 复用解析器中的连接与程序地址，避免配置重复与漂移
+    this.connection = this.parser.getConnection();
+    this.program = this.parser.getProgramAddress();
   }
 
   async onModuleInit(): Promise<void> {
